@@ -1,0 +1,5 @@
+session,time,device,mode,direction,seq,status,wire_bytes,recorded_s,speech_s,vad_ms,stt_ms,tts_ms,queue_ms,ack_after_ms,peer_tts_ms,peer_queue_ms,rtt_ms,e2e_ms,other_ms,text
+20260926-235936,00:00:32.412,SM-M215G,JOIN,INCOMING,0,PLAYED,65,,,,,663,3,,,,,,,"नमस्ते आप कैसे हैं"
+20260926-235936,00:00:43.731,SM-M215G,JOIN,OUTGOING,0,ACKED,68,1.86,1.60,59,689,,,1065,147,0,49,1041,122,"मैं ठीक हूँ धन्यवाद"
+20260926-235936,00:02:20.086,SM-M215G,JOIN,INCOMING,1,PLAYED,96,,,,,757,3,,,,,,,"क्या आप मेरी आवाज सुन पा रहे हो"
+20260926-235936,00:02:36.897,SM-M215G,JOIN,OUTGOING,1,ACKED,96,11.60,8.00,325,3276,,,4188,160,1,68,4154,358,"मौसम खराब है तेज़ हवा चल रही है"

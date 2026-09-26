@@ -5,6 +5,11 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 ## Phase status
 
 - [x] **Phase 0: offline voice loop** (done 2026-09-26). Hold to talk → Silero VAD → IndicConformer Hindi STT → transcript on screen → Piper Hindi TTS playback, with VAD/STT/TTS/total timings on screen. About 1.2 s total for a 20-word sentence on a Galaxy S25. See `BENCHMARKS.md`.
+- [ ] **Phase 1: two phones, text over Wi-Fi.** Working end to end; the **exit test is still pending**. Plan: `docs/PHASE1_PLAN.md`.
+  - [x] Steps 1–6: PacketCodec, TcpTransport, PC fake peer, SessionManager, Host/Join/Solo UI, RTT + end-to-end latency
+  - [x] Preliminary S25 ↔ Galaxy M21 run over the S25 hotspot: 4/4 delivered, RTT 49–68 ms (see `BENCHMARKS.md`)
+  - [ ] Step 7 exit test: 10 sentences each way (`docs/phase1_sentences.md`), then pull both `benchmarks.csv` files and finish the write-up
+  - [ ] Before that run: label Host IPs as hotspot vs Wi-Fi and list the hotspot one first (the S25 showed two IPs)
 
 ## Rules
 
@@ -16,11 +21,16 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 ## Layout
 
 - `app/src/main/java/com/itantra/`
-  - `MainActivity.kt`, `MainViewModel.kt` (pipeline + timings), `ui/MainScreen.kt`
+  - `MainActivity.kt`, `MainViewModel.kt` (loads engines, runs one session), `BenchmarkLog.kt` (`files/benchmarks.csv`)
+  - `ui/`: `MainScreen.kt` (router), `HomeScreen.kt` (Host/Join/Solo), `SessionScreen.kt` (chat + timings)
   - `audio/AudioRecorder.kt`: 16 kHz mono capture
   - `speech/VadTrimmer.kt`, `SttEngine.kt`, `TtsEngine.kt`, `AssetCopier.kt`: sherpa-onnx wrappers
+  - `comm/`: `Packet`, `PacketCodec` (17 B overhead + CRC32), `Transport`, `TcpTransport`, `LocalAddresses` (plain Kotlin, no Android)
+  - `session/SessionManager.kt`: the only place speech meets the network (queue while talking, ACKs, PING/RTT)
+- `app/src/test/`: JUnit for codec, TCP transport and SessionManager (`gradlew testDebugUnitTest`, runs on the PC)
 - `scripts/fetch_models.py`: downloads the sherpa-onnx AAR and all models, and patches the STT model with sherpa-onnx metadata
 - `scripts/test_models_pc.py`: desktop TTS → STT round-trip check
+- `scripts/fake_peer.py`: PC stand-in for the second phone (`adb forward`/`reverse`, `--watch FILE` for scripted sends)
 - Models (`app/src/main/assets/{vad,stt,tts}`) and `app/libs/*.aar` are gitignored; recreate them with the fetch script.
 
 ## Commands (Windows, from the repo root)
@@ -31,6 +41,8 @@ $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleDebug
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb logcat -s iTantra:* AndroidRuntime:E
+adb shell am start -n com.itantra/.MainActivity --es mode host        # or: --es mode join --es peer <ip>
+adb shell run-as com.itantra cat files/benchmarks.csv > benchmarks.csv # pull per-message timings
 ```
 
 ## Environment notes
@@ -38,3 +50,5 @@ adb logcat -s iTantra:* AndroidRuntime:E
 - The dev PC has about 8 GB RAM, which is too little for the emulator. Test on the USB-connected Galaxy S25.
 - Gradle is capped at `-Xmx1536m` with in-process Kotlin compilation (`gradle.properties`).
 - Use the project `.venv` for Python. Don't install into global Python (it breaks other packages via protobuf).
+- With the screen off, Android cuts a backgrounded app's network after about 70 s. The session screen keeps the screen on during Host/Join.
+- Second test phone: Galaxy M21 2021 (SM-M215G, Android 13, arm64). It's much slower (STT about 2.4× real time vs 11× on the S25).

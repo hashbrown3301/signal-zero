@@ -55,3 +55,49 @@ The TTS figure excludes the one-time espeak-ng-data copy on first launch (146 ms
 ### Desktop reference (PC sanity check, `scripts/test_models_pc.py`)
 
 Intel i5-1235U laptop, 2 threads: TTS 243 ms for 2.76 s of audio, STT 787 ms; the transcript matched the input exactly.
+
+## Phase 1: two phones over Wi-Fi hotspot, preliminary run (2026-09-27)
+
+> **Preliminary.** A short 4-message exchange, not the full exit test (10 sentences each way from
+> `docs/phase1_sentences.md`). The full run is still to do. Raw data: `docs/phase1_results/m21_benchmarks.csv`
+> (the S25's CSV is not pulled yet).
+
+### Setup
+
+| | Host | Joiner |
+|---|---|---|
+| Phone | Samsung Galaxy S25 (SM-S931B) | Samsung Galaxy M21 2021 (SM-M215G) |
+| OS | Android 16 | Android 13 |
+| SoC / RAM | Snapdragon, 12 GB | Exynos 9611, 6 GB |
+| Model load (VAD / STT / TTS) | 44 / 608 / 518 ms | 132 / 3447 / 2811 ms |
+
+Link: TCP over the S25's mobile hotspot, host IP `10.242.62.95` (read from `swlan0`, not `192.168.x.1`).
+Build: commit `2afa136`.
+
+### Results
+
+**M21 → S25** (measured on the M21's clock: end-to-end = (ACK received − release) − RTT/2)
+
+| Seq | Transcript | Recorded / speech | Bytes vs raw audio | VAD | STT | Other | Net (RTT/2) | S25 queue | S25 TTS | **End-to-end** |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | मैं ठीक हूँ धन्यवाद | 1.9 s / 1.6 s | 68 B vs 58 KB (875×) | 59 | 689 | 122 | 24 | 0 | 147 | **1041 ms** |
+| 1 | मौसम खराब है तेज़ हवा चल रही है | 11.6 s / 8.0 s | 96 B vs 363 KB (3866×) | 325 | 3276 | 358 | 34 | 1 | 160 | **4154 ms** |
+
+**S25 → M21** (only the M21's side is available until the S25's CSV is pulled)
+
+| Seq | Transcript | Bytes | M21 queue | M21 TTS |
+|---|---|---|---|---|
+| 0 | नमस्ते आप कैसे हैं | 65 B | 3 ms | 663 ms |
+| 1 | क्या आप मेरी आवाज सुन पा रहे हो | 96 B | 3 ms | 757 ms |
+
+- **Delivery:** 4 of 4 messages delivered, ACKed and played, with no losses or reconnects.
+- **RTT over the hotspot:** 49–68 ms (vs 3–6 ms over USB with the PC fake peer).
+- **The receiving phone's speed decides how fast you hear the reply.** The S25 synthesizes in about 150 ms; the M21 needs 660–760 ms for similar sentences.
+- **On the M21, STT dominates:** 3.3 s for 8 s of speech (about 2.4× real time) versus about 11× real time on the S25.
+  End-to-end latency on budget phones is therefore driven by STT, not the network (the network was 24–34 ms here).
+- **"Other" is higher on the M21** (122–358 ms vs about 50 ms on the S25). This is the time around recording stop and
+  hand-off on a slower CPU; worth profiling before the full run.
+
+### Still to do for the exit criterion
+- The full run: 10 sentences from `docs/phase1_sentences.md` each way, then STT accuracy against the reference text,
+  median/min/max end-to-end per direction, and the S25-side end-to-end figures for S25 → M21.
