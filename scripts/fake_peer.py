@@ -35,6 +35,10 @@ HINDI = 1
 _start = time.monotonic()
 
 
+def log(msg: str) -> None:
+    print(f"{time.strftime('%H:%M:%S')}.{int(time.time() * 1000) % 1000:03d} {msg}", flush=True)
+
+
 def now_ms() -> int:
     return int((time.monotonic() - _start) * 1000) & 0xFFFFFFFF
 
@@ -79,7 +83,7 @@ class Peer:
     def send_text(self, text: str) -> None:
         payload = text.encode("utf-8")
         self.send(encode(TEXT, self.seq, now_ms(), payload))
-        print(f"-> TEXT seq={self.seq} {OVERHEAD + len(payload)} B: {text}", flush=True)
+        log(f"-> TEXT seq={self.seq} {OVERHEAD + len(payload)} B: {text}")
         self.seq += 1
 
     def reader(self) -> None:
@@ -88,21 +92,39 @@ class Peer:
                 p = read_packet(self.sock)
                 name = TYPE_NAMES.get(p["type"], f"type{p['type']}")
                 if p["type"] == TEXT:
-                    print(f"<- TEXT seq={p['seq']} {p['size']} B: {p['payload'].decode('utf-8')}", flush=True)
+                    log(f"<- TEXT seq={p['seq']} {p['size']} B: {p['payload'].decode('utf-8')}")
                     self.send(encode(ACK, p["seq"], p["ts"], struct.pack(">II", 0, 0), p["lang"]))
                 elif p["type"] == PING:
                     self.send(encode(PONG, p["seq"], p["ts"], lang=p["lang"]))
-                    print(f"<- PING seq={p['seq']} (answered PONG)", flush=True)
+                    log(f"<- PING seq={p['seq']} (answered PONG)")
                 elif p["type"] == ACK:
                     tts_ms, queue_ms = struct.unpack(">II", p["payload"])
                     rtt = (now_ms() - p["ts"]) & 0xFFFFFFFF
-                    print(f"<- ACK  seq={p['seq']} after {rtt} ms (peer TTS {tts_ms} ms, queued {queue_ms} ms)",
-                          flush=True)
+                    log(f"<- ACK  seq={p['seq']} after {rtt} ms (peer TTS {tts_ms} ms, queued {queue_ms} ms)")
                 else:
                     rtt = (now_ms() - p["ts"]) & 0xFFFFFFFF
-                    print(f"<- {name} seq={p['seq']} rtt={rtt} ms", flush=True)
+                    log(f"<- {name} seq={p['seq']} rtt={rtt} ms")
         except (EOFError, OSError, ValueError) as e:
-            print(f"-- connection ended: {e}", flush=True)
+            log(f"-- connection ended: {e}")
+
+
+def watch(path: str, peer: "Peer") -> None:
+    """Send every line appended to `path` (created empty if missing) until the connection ends."""
+    open(path, "a", encoding="utf-8").close()
+    with open(path, encoding="utf-8") as f:
+        f.seek(0, 2)
+        log(f"-- watching {path}")
+        while True:
+            line = f.readline()
+            if not line:
+                time.sleep(0.1)
+                continue
+            if line.strip():
+                try:
+                    peer.send_text(line.strip())
+                except OSError as e:
+                    log(f"-- send failed: {e}")
+                    return
 
 
 def selftest() -> None:
@@ -138,6 +160,7 @@ def main() -> None:
     ap.add_argument("--send", action="append", default=[], metavar="TEXT", help="send TEXT (repeatable), then exit")
     ap.add_argument("--wait", type=float, default=3.0, help="seconds to keep listening after --send (default 3)")
     ap.add_argument("--gap", type=float, default=0.0, help="seconds between --send messages")
+    ap.add_argument("--watch", metavar="FILE", help="send each line appended to FILE (for scripted tests)")
     args = ap.parse_args()
 
     if args.selftest:
@@ -148,12 +171,12 @@ def main() -> None:
         host, port = args.connect.rsplit(":", 1)
         sock = socket.create_connection((host, int(port)), timeout=5)
         sock.settimeout(None)
-        print(f"-- connected to {args.connect}", flush=True)
+        log(f"-- connected to {args.connect}")
     else:
         srv = socket.create_server(("0.0.0.0", args.listen))
-        print(f"-- listening on :{args.listen}", flush=True)
+        log(f"-- listening on :{args.listen}")
         sock, addr = srv.accept()
-        print(f"-- phone connected from {addr[0]}:{addr[1]}", flush=True)
+        log(f"-- phone connected from {addr[0]}:{addr[1]}")
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
     peer = Peer(sock)
@@ -165,6 +188,8 @@ def main() -> None:
                 time.sleep(args.gap)
             peer.send_text(text)
         time.sleep(args.wait)
+    elif args.watch:
+        watch(args.watch, peer)
     else:
         try:
             for line in sys.stdin:
