@@ -9,7 +9,8 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Steps 1–6: PacketCodec, TcpTransport, PC fake peer, SessionManager, Host/Join/Solo UI, RTT + end-to-end latency
   - [x] Preliminary S25 ↔ Galaxy M21 run over the S25 hotspot: 4/4 delivered, RTT 49–68 ms (see `BENCHMARKS.md`)
   - [ ] Step 7 exit test: 10 sentences each way (`docs/phase1_sentences.md`), then pull both `benchmarks.csv` files and finish the write-up
-  - [ ] Before that run: label Host IPs as hotspot vs Wi-Fi and list the hotspot one first (the S25 showed two IPs)
+  - [x] Host card labels IPs as hotspot vs Wi-Fi (via Android's joined-Wi-Fi interfaces) and shows the hotspot first
+  - [ ] Before that run: install the current build on the S25 too (the M21 already has it)
 
 ## Rules
 

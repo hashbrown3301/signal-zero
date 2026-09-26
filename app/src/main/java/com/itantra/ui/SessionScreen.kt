@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.itantra.MainViewModel
 import com.itantra.MainViewModel.Mode
+import com.itantra.comm.AddressKind
 import com.itantra.comm.LinkState
 import com.itantra.session.Direction
 import com.itantra.session.Message
@@ -195,28 +196,27 @@ private fun HostAddressCard(ui: MainViewModel.UiState) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Other phone: join this IP", style = MaterialTheme.typography.bodyMedium)
-            val lan = ui.hostAddresses.filter { it.isLikelyLan }
-            if (lan.isEmpty()) {
+            val lan = ui.hostAddresses.filter { it.isLan } // hotspot first (sorted by kind)
+            val main = lan.firstOrNull()
+            if (main == null) {
                 Text(
-                    "No Wi-Fi/hotspot address yet – turn on the hotspot",
+                    "No hotspot or Wi-Fi address yet – turn on the hotspot",
                     color = MaterialTheme.colorScheme.error,
                 )
-            }
-            lan.forEach {
-                Text(it.ip, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-            }
-            val others = ui.hostAddresses.filterNot { it.isLikelyLan }
-            if (others.isNotEmpty()) {
+            } else {
+                Text(main.ip, fontSize = 34.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "other: " + others.joinToString { "${it.ip} (${it.iface})" },
+                    "${main.kind.label} (${main.iface}) · port 5005" +
+                        if (main.kind == AddressKind.WIFI) " – only for phones on the same Wi-Fi" else "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (lan.isNotEmpty()) {
+            lan.drop(1).forEach {
                 Text(
-                    "interface: " + lan.joinToString { it.iface } + " · port 5005",
-                    style = MaterialTheme.typography.bodySmall,
+                    "also ${it.kind.label}: ${it.ip} (${it.iface})" +
+                        if (it.kind == AddressKind.WIFI) " – only for phones on the same Wi-Fi" else "",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

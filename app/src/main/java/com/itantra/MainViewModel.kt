@@ -2,6 +2,8 @@ package com.itantra
 
 import android.app.Application
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -122,7 +124,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 // The hotspot may be switched on after the session starts, so keep refreshing.
                 launch {
                     while (true) {
-                        val addresses = withContext(Dispatchers.IO) { localIpv4Addresses() }
+                        val addresses = withContext(Dispatchers.IO) { localIpv4Addresses(wifiClientInterfaces()) }
                         _state.update { it.copy(hostAddresses = addresses) }
                         delay(3_000)
                     }
@@ -135,6 +137,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 logged = logNewEvents(s, logged, bench)
             }
         }
+    }
+
+    /** Interfaces of Wi-Fi networks this phone has joined, so the hotspot can be told apart from them. */
+    private fun wifiClientInterfaces(): Set<String> {
+        val cm = getApplication<Application>().getSystemService(ConnectivityManager::class.java) ?: return emptySet()
+        @Suppress("DEPRECATION") // allNetworks is the simplest way to see every joined network at once
+        return cm.allNetworks.mapNotNull { network ->
+            val caps = cm.getNetworkCapabilities(network) ?: return@mapNotNull null
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) cm.getLinkProperties(network)?.interfaceName
+            else null
+        }.toSet()
     }
 
     fun leaveSession() {
