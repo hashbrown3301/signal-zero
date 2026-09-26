@@ -49,6 +49,7 @@ android {
 dependencies {
     // Downloaded by scripts/fetch_models.py (not committed).
     implementation(files("libs/sherpa-onnx-1.13.7.aar"))
+    implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
