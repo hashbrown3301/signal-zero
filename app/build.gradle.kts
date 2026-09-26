@@ -14,6 +14,16 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        ndk {
+            // Real phones + the x86_64 emulator; drops 32-bit libs from the sherpa-onnx AAR.
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
+    }
+
+    androidResources {
+        // sherpa-onnx memory-maps models straight out of the APK, so keep them uncompressed.
+        noCompress += "onnx"
     }
 
     buildTypes {
@@ -37,6 +47,9 @@ android {
 }
 
 dependencies {
+    // Downloaded by scripts/fetch_models.py (not committed).
+    implementation(files("libs/sherpa-onnx-1.13.7.aar"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
