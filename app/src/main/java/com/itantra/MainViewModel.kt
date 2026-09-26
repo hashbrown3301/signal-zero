@@ -16,6 +16,7 @@ import com.itantra.session.DeviceSpeaker
 import com.itantra.session.Direction
 import com.itantra.session.SessionManager
 import com.itantra.session.SessionState
+import com.itantra.session.Status
 import com.itantra.speech.SttEngine
 import com.itantra.speech.TtsEngine
 import com.itantra.speech.VadTrimmer
@@ -127,10 +128,11 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     }
                 }
             }
+            val bench = BenchmarkLog(getApplication<Application>().filesDir, mode.name)
             var logged = emptySet<String>()
             sm.state.collect { s ->
                 _state.update { it.copy(session = s) }
-                logged = logNewEvents(s, logged)
+                logged = logNewEvents(s, logged, bench)
             }
         }
     }
@@ -148,10 +150,15 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     fun onPressEnd() = session?.pressEnd()
 
     /** Logs each message once per status change, so logcat shows the whole conversation. */
-    private fun logNewEvents(s: SessionState, seen: Set<String>): Set<String> {
+    private fun logNewEvents(s: SessionState, seen: Set<String>, bench: BenchmarkLog): Set<String> {
         val keys = s.messages.map { m -> "${m.id}:${m.status}" to m }
         for ((key, m) in keys) {
             if (key in seen) continue
+            if (m.status in FINAL_STATUSES) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    runCatching { bench.append(m) }.onFailure { Log.w(TAG, "benchmark log failed", it) }
+                }
+            }
             val dir = when (m.direction) {
                 Direction.OUTGOING -> "OUT"
                 Direction.INCOMING -> "IN "
@@ -176,5 +183,6 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     private companion object {
         const val TAG = "iTantra"
         const val KEY_LAST_PEER = "last_peer"
+        val FINAL_STATUSES = setOf(Status.ACKED, Status.FAILED, Status.PLAYED)
     }
 }
