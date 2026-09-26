@@ -173,7 +173,10 @@ private fun TopBar(ui: MainViewModel.UiState, onLeave: () -> Unit) {
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(color))
-                Text(" $label", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    " $label" + (ui.session.rttMs?.let { " · RTT $it ms" } ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             val last = ui.session.lastDisconnect
             if (last != null && ui.session.link !is LinkState.Connected) {
@@ -237,6 +240,9 @@ private fun MessageBubble(m: Message) {
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(m.text, fontSize = 20.sp, lineHeight = 28.sp)
+            m.endToEndMs?.let {
+                Text("end-to-end $it ms", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            }
             detailLines(m).forEach {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -262,12 +268,16 @@ private fun detailLines(m: Message): List<String> {
         bytes != null -> lines += "$bytes B"
     }
     when (m.direction) {
-        Direction.OUTGOING -> {
-            lines += "VAD ${m.vadMs ?: "–"} · STT ${m.sttMs ?: "–"} ms"
-            if (m.ackAfterMs != null) {
-                lines += "release → heard ${m.ackAfterMs} ms · peer TTS ${m.peerTtsMs} ms" +
-                    (m.peerQueueMs?.takeIf { it >= MIN_SHOWN_WAIT_MS }?.let { " · waited $it ms" } ?: "")
+        Direction.OUTGOING -> when {
+            m.endToEndMs != null -> {
+                lines += "VAD ${m.vadMs} + STT ${m.sttMs} + other ${m.otherMs} + net ${m.networkMs}"
+                lines += "+ peer queue ${m.peerQueueMs} + peer TTS ${m.peerTtsMs} ms"
             }
+            m.ackAfterMs != null -> {
+                lines += "VAD ${m.vadMs ?: "–"} · STT ${m.sttMs ?: "–"} ms"
+                lines += "release → ACK ${m.ackAfterMs} ms (no RTT yet)"
+            }
+            else -> lines += "VAD ${m.vadMs ?: "–"} · STT ${m.sttMs ?: "–"} ms"
         }
         Direction.INCOMING -> if (m.ttsMs != null) {
             lines += "TTS ${m.ttsMs} ms" + (m.queueMs?.takeIf { it >= MIN_SHOWN_WAIT_MS }?.let { " · waited $it ms" } ?: "")

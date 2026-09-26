@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,8 +43,25 @@ data class Message(
     /** OUTGOING: the receiver's TTS and queue times, from its ACK. */
     val peerTtsMs: Long? = null,
     val peerQueueMs: Long? = null,
+    /** OUTGOING: median PING/PONG round trip when the ACK arrived. */
+    val rttMs: Long? = null,
     val error: String? = null,
-)
+) {
+    /** One-way network estimate: RTT / 2. */
+    val networkMs: Long? get() = rttMs?.let { it / 2 }
+
+    /**
+     * OUTGOING: button release → receiver's audio starts, all on this phone's clock:
+     * (ACK received − release) − the ACK's trip back (RTT / 2).
+     */
+    val endToEndMs: Long? get() = ackAfterMs?.let { after -> networkMs?.let { after - it } }
+
+    /** Whatever [endToEndMs] contains beyond the named stages (recorder stop, encoding, …). */
+    val otherMs: Long?
+        get() = endToEndMs?.let {
+            it - (vadMs ?: 0) - (sttMs ?: 0) - (networkMs ?: 0) - (peerQueueMs ?: 0) - (peerTtsMs ?: 0)
+        }
+}
 
 enum class Phase { Ready, Listening, Processing }
 
@@ -56,6 +74,8 @@ data class SessionState(
     val lastDisconnect: String? = null,
     val messages: List<Message> = emptyList(),
     val notice: String? = null,
+    /** Median of the recent PING/PONG round trips; null until the first PONG. */
+    val rttMs: Long? = null,
 ) {
     val canTalk: Boolean get() = (phase == Phase.Ready && !speaking) || phase == Phase.Listening
 }
@@ -75,6 +95,8 @@ class SessionManager(
     private val transport: Transport?,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
     private val minPressMs: Long = 300,
+    /** PING period while connected; 0 disables pinging. */
+    private val pingIntervalMs: Long = 2_000,
 ) {
     private val job = SupervisorJob(parentScope.coroutineContext[Job])
     private val scope = CoroutineScope(parentScope.coroutineContext + job)
@@ -102,11 +124,17 @@ class SessionManager(
     private var nextSeq = 0
     private var pressedAt = 0L
 
+    private val pingSentAt = ConcurrentHashMap<Int, Long>()
+    private var nextPingSeq = 0
+    private val rttSamples = ArrayDeque<Long>() // guarded by itself
+
     fun start() {
         scope.launch { playbackLoop() }
         if (transport != null) {
             scope.launch {
                 transport.state.collect { link ->
+                    // A new connection may take a different path; start RTT fresh.
+                    if (link !is LinkState.Connected) resetRtt()
                     _state.update {
                         it.copy(
                             link = link,
@@ -116,7 +144,37 @@ class SessionManager(
                 }
             }
             scope.launch { transport.incoming.collect(::onPacket) }
+            if (pingIntervalMs > 0) scope.launch { pingLoop(transport) }
         }
+    }
+
+    private suspend fun pingLoop(transport: Transport) {
+        while (true) {
+            transport.state.first { it is LinkState.Connected }
+            val seq = nextPingSeq++ and 0xFFFF
+            val now = clock()
+            pingSentAt[seq] = now
+            pingSentAt.entries.removeIf { now - it.value > PING_TIMEOUT_MS } // lost PONGs
+            runCatching { transport.send(Packet.ping(seq, now)) }
+            delay(pingIntervalMs)
+        }
+    }
+
+    private fun onPong(p: Packet) {
+        val sentAt = pingSentAt.remove(p.seq) ?: return
+        val rtt = clock() - sentAt
+        val median = synchronized(rttSamples) {
+            rttSamples.addLast(rtt)
+            while (rttSamples.size > RTT_WINDOW) rttSamples.removeFirst()
+            rttSamples.sorted()[rttSamples.size / 2]
+        }
+        _state.update { it.copy(rttMs = median) }
+    }
+
+    private fun resetRtt() {
+        synchronized(rttSamples) { rttSamples.clear() }
+        pingSentAt.clear()
+        _state.update { it.copy(rttMs = null) }
     }
 
     /** Talk button down. Returns false if talking isn't possible right now. */
@@ -209,16 +267,18 @@ class SessionManager(
             PacketType.PING -> runCatching { transport?.send(Packet.pong(of = p)) }
             PacketType.ACK -> pending.remove(p.seq)?.let { sent ->
                 val after = clock() - sent.releasedAt
+                val rtt = _state.value.rttMs
                 updateMessage(sent.messageId) {
                     it.copy(
                         status = Status.ACKED,
                         ackAfterMs = after,
                         peerTtsMs = p.ackTtsMs,
                         peerQueueMs = p.ackQueueMs,
+                        rttMs = rtt,
                     )
                 }
             }
-            PacketType.PONG -> Unit // RTT handling comes with PING scheduling (step 6)
+            PacketType.PONG -> onPong(p)
         }
     }
 
@@ -268,5 +328,7 @@ class SessionManager(
 
     private companion object {
         const val MAX_MESSAGES = 100
+        const val RTT_WINDOW = 10
+        const val PING_TIMEOUT_MS = 10_000L
     }
 }

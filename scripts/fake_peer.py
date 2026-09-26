@@ -75,6 +75,7 @@ class Peer:
         self.sock = sock
         self.lock = threading.Lock()
         self.seq = 0
+        self.pings = 0
 
     def send(self, data: bytes) -> None:
         with self.lock:
@@ -96,7 +97,9 @@ class Peer:
                     self.send(encode(ACK, p["seq"], p["ts"], struct.pack(">II", 0, 0), p["lang"]))
                 elif p["type"] == PING:
                     self.send(encode(PONG, p["seq"], p["ts"], lang=p["lang"]))
-                    log(f"<- PING seq={p['seq']} (answered PONG)")
+                    self.pings += 1
+                    if self.pings % 30 == 1:
+                        log(f"<- PING seq={p['seq']} (answered PONG; {self.pings} so far, logging every 30th)")
                 elif p["type"] == ACK:
                     tts_ms, queue_ms = struct.unpack(">II", p["payload"])
                     rtt = (now_ms() - p["ts"]) & 0xFFFFFFFF

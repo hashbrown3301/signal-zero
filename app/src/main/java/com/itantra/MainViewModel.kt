@@ -160,7 +160,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             Log.i(
                 TAG, "$dir #${m.seq ?: "-"} ${m.status} ${m.wireBytes ?: "-"} B | vad=${m.vadMs} stt=${m.sttMs} " +
                     "tts=${m.ttsMs} queue=${m.queueMs} ackAfter=${m.ackAfterMs} peerTts=${m.peerTtsMs} " +
-                    "peerQueue=${m.peerQueueMs} | ${m.text}"
+                    "peerQueue=${m.peerQueueMs} rtt=${m.rttMs} e2e=${m.endToEndMs} other=${m.otherMs} | ${m.text}"
             )
         }
         return keys.map { it.first }.toSet()

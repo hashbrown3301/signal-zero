@@ -9,6 +9,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -60,10 +62,12 @@ class SessionManagerTest {
     private suspend fun session(
         listener: Listener = FakeListener(hindi),
         speaker: Speaker = FakeSpeaker(),
+        pingIntervalMs: Long = 0,
     ): Pair<SessionManager, Transport> {
         val host = TcpTransport.host(port = 0)
         val port = (host.state.first { it is LinkState.Listening } as LinkState.Listening).port
-        val sm = SessionManager(scope, listener, speaker, host, minPressMs = 0).also { it.start() }
+        val sm = SessionManager(scope, listener, speaker, host, minPressMs = 0, pingIntervalMs = pingIntervalMs)
+            .also { it.start() }
         val peer = TcpTransport.join("127.0.0.1", port)
         closeables += { sm.close() }
         closeables += { peer.close() }
@@ -202,5 +206,67 @@ class SessionManagerTest {
         assertEquals(Phase.Ready, sm.state.value.phase)
         assertEquals("Hold the button while you speak", sm.state.value.notice)
         assertTrue(sm.state.value.messages.isEmpty())
+    }
+
+    /** Peer side of PING/PONG: answers each PING after [delayMs]; returns the other packets. */
+    private fun CoroutineScope.answerPings(peer: Transport, delayMs: Long, others: Channel<Packet>) = launch {
+        peer.incoming.collect { p ->
+            if (p.type == PacketType.PING) {
+                launch {
+                    delay(delayMs)
+                    peer.send(Packet.pong(of = p))
+                }
+            } else {
+                others.send(p)
+            }
+        }
+    }
+
+    @Test
+    fun pingsMeasureRtt() = test {
+        val (sm, peer) = session(pingIntervalMs = 50)
+        val others = Channel<Packet>(Channel.UNLIMITED)
+        val responder = scope.answerPings(peer, delayMs = 40, others = others)
+        val rtt = sm.state.first { (it.rttMs ?: 0) >= 40 }.rttMs!!
+        assertTrue("rtt $rtt ms", rtt in 40..200)
+        responder.cancel()
+    }
+
+    @Test
+    fun endToEndSubtractsHalfRttAndBreakdownAddsUp() = test {
+        val (sm, peer) = session(pingIntervalMs = 50)
+        val others = Channel<Packet>(Channel.UNLIMITED)
+        val responder = scope.answerPings(peer, delayMs = 40, others = others)
+        sm.state.first { it.rttMs != null }
+
+        sm.talk()
+        val text = others.receive()
+        assertEquals(PacketType.TEXT, text.type)
+        delay(100)
+        peer.send(Packet.ack(of = text, ttsMs = 50, queueMs = 20))
+
+        val m = sm.state.first { it.messages.singleOrNull()?.status == Status.ACKED }.messages.single()
+        val rtt = m.rttMs!!
+        assertEquals(m.ackAfterMs!! - rtt / 2, m.endToEndMs)
+        assertEquals(rtt / 2, m.networkMs)
+        val parts = m.vadMs!! + m.sttMs!! + m.networkMs!! + m.peerQueueMs!! + m.peerTtsMs!! + m.otherMs!!
+        assertEquals(m.endToEndMs, parts)
+        // The peer really waited 100 ms before ACKing (the 50/20 in the ACK are just reported values),
+        // so release → ACK is ≥ 100 ms and end-to-end is that minus the ACK's trip back (RTT/2).
+        assertTrue("ackAfter ${m.ackAfterMs} ms", m.ackAfterMs!! >= 100)
+        assertTrue("end-to-end ${m.endToEndMs} < ackAfter ${m.ackAfterMs}", m.endToEndMs!! < m.ackAfterMs!!)
+        responder.cancel()
+    }
+
+    @Test
+    fun missingPongsLeaveLatencyUnknownButAckStillWorks() = test {
+        val (sm, peer) = session(pingIntervalMs = 50) // the peer never answers PINGs
+        sm.talk()
+        val text = peer.incoming.first { it.type == PacketType.TEXT }
+        peer.send(Packet.ack(of = text, ttsMs = 10, queueMs = 0))
+        val m = sm.state.first { it.messages.singleOrNull()?.status == Status.ACKED }.messages.single()
+        assertNull(sm.state.value.rttMs)
+        assertNull(m.endToEndMs)
+        assertEquals(10L, m.peerTtsMs)
     }
 }

@@ -46,7 +46,8 @@ class AudioRecorder(val sampleRate: Int = 16_000) {
         rec.startRecording()
         record = rec
         reader = thread(name = "AudioRecorder") {
-            val chunk = ShortArray(sampleRate / 10) // 100 ms
+            // 20 ms reads: stop() waits for at most one read, so small chunks = faster release.
+            val chunk = ShortArray(sampleRate / 50)
             while (running) {
                 val n = rec.read(chunk, 0, chunk.size)
                 if (n > 0) synchronized(chunks) { chunks.add(chunk.copyOf(n)) }
