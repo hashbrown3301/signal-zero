@@ -119,6 +119,23 @@ class PacketCodecTest {
         assertEquals(bytes.size, PacketCodec.frameLength(bytes.copyOf(PacketCodec.HEADER_SIZE)))
     }
 
+    /** Same bytes as `scripts/fake_peer.py --selftest`, so the Kotlin and Python codecs agree. */
+    @Test
+    fun matchesPythonFakePeerBytes() {
+        fun hex(s: String) = s.split(" ").map { it.toInt(16).toByte() }.toByteArray()
+        assertArrayEquals(
+            hex("69 54 01 01 01 02 01 0a 0b 0c 0d 00 02 61 62 89 40 59 bd"),
+            PacketCodec.encode(Packet.text(seq = 0x0102, timestamp = 0x0A0B0C0DL, text = "ab")),
+        )
+        assertArrayEquals(
+            hex(
+                "69 54 01 01 00 07 01 00 00 03 e8 00 12 e0 a4 a8 e0 a4 ae e0 a4 b8 " +
+                    "e0 a5 8d e0 a4 a4 e0 a5 87 6d bf 35 41"
+            ),
+            PacketCodec.encode(Packet.text(seq = 7, timestamp = 1000, text = "नमस्ते")),
+        )
+    }
+
     @Test
     fun wireLayoutMatchesSpec() {
         val bytes = PacketCodec.encode(Packet.text(seq = 0x0102, timestamp = 0x0A0B0C0DL, text = "ab"))
