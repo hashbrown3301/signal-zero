@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiInfo
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -145,9 +147,21 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         @Suppress("DEPRECATION") // allNetworks is the simplest way to see every joined network at once
         return cm.allNetworks.mapNotNull { network ->
             val caps = cm.getNetworkCapabilities(network) ?: return@mapNotNull null
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) cm.getLinkProperties(network)?.interfaceName
-            else null
+            if (isJoinedWifi(caps)) cm.getLinkProperties(network)?.interfaceName else null
         }.toSet()
+    }
+
+    /**
+     * Android 15+ also lists this phone's own hotspot as a WIFI-transport network, but flagged
+     * LOCAL_NETWORK and without WifiInfo (seen on the S25: swlan0). Only a network we joined
+     * carries WifiInfo (SSID, BSSID…).
+     */
+    private fun isJoinedWifi(caps: NetworkCapabilities): Boolean {
+        if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_LOCAL_NETWORK)
+        ) return false
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || caps.transportInfo is WifiInfo
     }
 
     fun leaveSession() {

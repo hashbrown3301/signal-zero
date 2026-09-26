@@ -1,0 +1,6 @@
+session,time,device,mode,direction,seq,status,wire_bytes,recorded_s,speech_s,vad_ms,stt_ms,tts_ms,queue_ms,ack_after_ms,peer_tts_ms,peer_queue_ms,rtt_ms,e2e_ms,other_ms,text
+20260926-233345,23:34:58.609,SM-S931B,SOLO,LOCAL,,PLAYED,,2.70,2.22,14,232,105,,,,,,,,"नमस्ते आप कैसे हैं"
+20260926-235649,00:00:30.620,SM-S931B,HOST,OUTGOING,0,ACKED,65,1.76,1.76,21,180,,,1236,663,3,68,1202,301,"नमस्ते आप कैसे हैं"
+20260926-235649,00:00:45.713,SM-S931B,HOST,INCOMING,0,PLAYED,68,,,,,147,0,,,,,,,"मैं ठीक हूँ धन्यवाद"
+20260926-235649,00:02:17.511,SM-S931B,HOST,OUTGOING,1,ACKED,96,2.70,2.60,35,246,,,1202,757,3,85,1160,77,"क्या आप मेरी आवाज सुन पा रहे हो"
+20260926-235649,00:02:39.793,SM-S931B,HOST,INCOMING,1,PLAYED,96,,,,,160,1,,,,,,,"मौसम खराब है तेज़ हवा चल रही है"

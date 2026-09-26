@@ -60,7 +60,7 @@ Intel i5-1235U laptop, 2 threads: TTS 243 ms for 2.76 s of audio, STT 787 ms; th
 
 > **Preliminary.** A short 4-message exchange, not the full exit test (10 sentences each way from
 > `docs/phase1_sentences.md`). The full run is still to do. Raw data: `docs/phase1_results/m21_benchmarks.csv`
-> (the S25's CSV is not pulled yet).
+> and `docs/phase1_results/s25_benchmarks.csv`.
 
 ### Setup
 
@@ -83,16 +83,17 @@ Build: commit `2afa136`.
 | 0 | मैं ठीक हूँ धन्यवाद | 1.9 s / 1.6 s | 68 B vs 58 KB (875×) | 59 | 689 | 122 | 24 | 0 | 147 | **1041 ms** |
 | 1 | मौसम खराब है तेज़ हवा चल रही है | 11.6 s / 8.0 s | 96 B vs 363 KB (3866×) | 325 | 3276 | 358 | 34 | 1 | 160 | **4154 ms** |
 
-**S25 → M21** (only the M21's side is available until the S25's CSV is pulled)
+**S25 → M21** (measured on the S25's clock)
 
-| Seq | Transcript | Bytes | M21 queue | M21 TTS |
-|---|---|---|---|---|
-| 0 | नमस्ते आप कैसे हैं | 65 B | 3 ms | 663 ms |
-| 1 | क्या आप मेरी आवाज सुन पा रहे हो | 96 B | 3 ms | 757 ms |
+| Seq | Transcript | Recorded / speech | Bytes vs raw audio | VAD | STT | Other | Net (RTT/2) | M21 queue | M21 TTS | **End-to-end** |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | नमस्ते आप कैसे हैं | 1.8 s / 1.8 s | 65 B vs 55 KB (866×) | 21 | 180 | 301 | 34 | 3 | 663 | **1202 ms** |
+| 1 | क्या आप मेरी आवाज सुन पा रहे हो | 2.7 s / 2.6 s | 96 B vs 84 KB (900×) | 35 | 246 | 77 | 42 | 3 | 757 | **1160 ms** |
 
 - **Delivery:** 4 of 4 messages delivered, ACKed and played, with no losses or reconnects.
 - **RTT over the hotspot:** 49–68 ms (vs 3–6 ms over USB with the PC fake peer).
 - **The receiving phone's speed decides how fast you hear the reply.** The S25 synthesizes in about 150 ms; the M21 needs 660–760 ms for similar sentences.
+  So S25 → M21 (about 1.2 s) is limited by the M21's TTS, and M21 → S25 (1.0–4.2 s) by the M21's STT.
 - **On the M21, STT dominates:** 3.3 s for 8 s of speech (about 2.4× real time) versus about 11× real time on the S25.
   End-to-end latency on budget phones is therefore driven by STT, not the network (the network was 24–34 ms here).
 - **"Other" is higher on the M21** (122–358 ms vs about 50 ms on the S25). This is the time around recording stop and
@@ -100,4 +101,4 @@ Build: commit `2afa136`.
 
 ### Still to do for the exit criterion
 - The full run: 10 sentences from `docs/phase1_sentences.md` each way, then STT accuracy against the reference text,
-  median/min/max end-to-end per direction, and the S25-side end-to-end figures for S25 → M21.
+  and median/min/max end-to-end per direction.

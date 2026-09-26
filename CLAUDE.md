@@ -10,7 +10,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Preliminary S25 ↔ Galaxy M21 run over the S25 hotspot: 4/4 delivered, RTT 49–68 ms (see `BENCHMARKS.md`)
   - [ ] Step 7 exit test: 10 sentences each way (`docs/phase1_sentences.md`), then pull both `benchmarks.csv` files and finish the write-up
   - [x] Host card labels IPs as hotspot vs Wi-Fi (via Android's joined-Wi-Fi interfaces) and shows the hotspot first
-  - [ ] Before that run: install the current build on the S25 too (the M21 already has it)
+  - [ ] Before that run: reinstall the current build on the M21 (the S25 has it; the M21 is one fix behind)
 
 ## Rules
 
@@ -51,5 +51,6 @@ adb shell run-as com.itantra cat files/benchmarks.csv > benchmarks.csv # pull pe
 - The dev PC has about 8 GB RAM, which is too little for the emulator. Test on the USB-connected Galaxy S25.
 - Gradle is capped at `-Xmx1536m` with in-process Kotlin compilation (`gradle.properties`).
 - Use the project `.venv` for Python. Don't install into global Python (it breaks other packages via protobuf).
+- Android 15+ lists the phone's own hotspot (e.g. `swlan0`) as a WIFI network flagged `LOCAL_NETWORK` with no WifiInfo. Don't treat it as joined Wi-Fi.
 - With the screen off, Android cuts a backgrounded app's network after about 70 s. The session screen keeps the screen on during Host/Join.
 - Second test phone: Galaxy M21 2021 (SM-M215G, Android 13, arm64). It's much slower (STT about 2.4× real time vs 11× on the S25).
