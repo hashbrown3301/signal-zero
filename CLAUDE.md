@@ -10,7 +10,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Preliminary S25 ↔ Galaxy M21 run over the S25 hotspot: 4/4 delivered, RTT 49–68 ms (see `BENCHMARKS.md`)
   - [ ] Step 7 exit test: 10 sentences each way (`docs/phase1_sentences.md`), then pull both `benchmarks.csv` files and finish the write-up
   - [x] Host card labels IPs as hotspot vs Wi-Fi (via Android's joined-Wi-Fi interfaces) and shows the hotspot first
-  - [ ] Before that run: reinstall the current build on the M21 (the S25 has it; the M21 is one fix behind)
+  - [x] Both phones run the current build (`02483eb`)
 
 ## Rules
 
