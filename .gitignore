@@ -1,0 +1,31 @@
+# Gradle / build output
+.gradle/
+build/
+*.apk
+*.aab
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Machine-specific
+local.properties
+
+# Downloaded binaries and models (fetched by scripts/fetch_models.py)
+app/libs/*.aar
+app/src/main/assets/vad/
+app/src/main/assets/stt/
+app/src/main/assets/tts/
+scripts/downloads/
+
+# Python
+__pycache__/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
