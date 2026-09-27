@@ -84,11 +84,14 @@ jobs:
           status=${PIPESTATUS[0]}
           [ "$status" = "0" ] || python scripts/packs/annotate.py "smoke test" smoke.log
           # Public one-line-per-pack summary on the run page (the report itself is in the artifact).
+          # One annotation for all packs: GitHub shows at most 10 notices per step.
           python - <<'EOF' || true
           import json
+          lines = []
           for r in json.load(open("dist/smoke/report.json", encoding="utf-8")):
               extra = f"round-trip CER {r['cer_vs_phrase']:.1%}: {r['text']}" if "cer_vs_phrase" in r else                       (f"{r['audio_s']} s audio" if "audio_s" in r else r.get("mode", r.get("error", "")))
-              print(f"::notice title={r['pack']} {'OK' if r['ok'] else 'FAILED'}::{r.get('size_mb', '?')} MB, {extra}")
+              lines.append(f"{r['pack']} {'OK' if r['ok'] else 'FAILED'} | {r.get('size_mb', '?')} MB | {extra}")
+          print("::notice title=Pack smoke test::" + "%0A".join(lines))
           EOF
           exit $status
 
