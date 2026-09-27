@@ -302,7 +302,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         val keys = s.messages.map { m -> "${m.id}:${m.status}" to m }
         for ((key, m) in keys) {
             if (key in seen) continue
-            if (m.status in FINAL_STATUSES) {
+            if (m.status in LOGGED_STATUSES) {
                 viewModelScope.launch(Dispatchers.IO) {
                     runCatching { bench.append(m, _state.value.setupMs) }.onFailure { Log.w(TAG, "benchmark log failed", it) }
                 }
@@ -332,6 +332,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         const val TAG = "iTantra"
         const val KEY_LAST_PEER = "last_peer"
         const val KEY_LAST_BT = "last_bt_address"
-        val FINAL_STATUSES = setOf(Status.ACKED, Status.FAILED, Status.PLAYED)
+        // SENT is logged too, so a message that never gets an ACK (a loss) still leaves a row.
+        val LOGGED_STATUSES = setOf(Status.SENT, Status.ACKED, Status.FAILED, Status.PLAYED)
     }
 }

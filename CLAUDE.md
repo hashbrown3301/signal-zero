@@ -17,6 +17,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Step 2: `bluetooth/BluetoothTransport` (host/join, shared FramedStream); A03 Core ↔ S25: 4/4 delivered, RTT about 50 ms
   - [x] Step 3: full voice loop over Bluetooth (A03 Core host ↔ S25, 6/6 delivered, RTT 40–44 ms); CSV `link` + `setup_ms` columns; Bluetooth setup about 3.1 s
   - [x] Step 4: reconnect after a drop, with a "Link lost / Reconnected" banner and `files/links.csv`. S25 ↔ A03 Core: lost, then back automatically (successful attempt 2.5 s). Max distance not measured yet.
+  - [x] Step 5 prep: `scripts/summarize_benchmarks.py` (tables, losses, WER); app also logs SENT so unacked messages count as lost. **Reinstall on both phones before the run.**
   - [ ] Step 5: 10 sentences over Wi-Fi and Bluetooth, comparison in `BENCHMARKS.md` (also closes Phase 1)
 
 ## Rules
@@ -39,6 +40,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 - `scripts/fetch_models.py`: downloads the sherpa-onnx AAR and all models, and patches the STT model with sherpa-onnx metadata
 - `scripts/test_models_pc.py`: desktop TTS → STT round-trip check
 - `scripts/fake_peer.py`: PC stand-in for the second phone (`adb forward`/`reverse`, `--watch FILE` for scripted sends)
+- `scripts/summarize_benchmarks.py`: `--pull DIR` copies every connected phone's CSVs; then it prints the `BENCHMARKS.md` tables for the scripted sentences (`--save-filtered DIR` keeps only those rows, safe to commit)
 - Models (`app/src/main/assets/{vad,stt,tts}`) and `app/libs/*.aar` are gitignored; recreate them with the fetch script.
 
 ## Commands (Windows, from the repo root)
