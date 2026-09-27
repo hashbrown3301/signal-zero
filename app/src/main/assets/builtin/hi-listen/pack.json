@@ -1,0 +1,7 @@
+{
+  "format": 1, "id": "hi-listen", "lang": "hi", "packet_code": 1, "name": "Hindi", "native": "हिन्दी", "kind": "listen",
+  "_comment": "Built into the APK: paths are asset paths (scripts/fetch_models.py puts the files there); files aren't SHA-checked.",
+  "engine": {"type": "piper", "model": "tts/hi_IN-priyamvada-medium.onnx", "tokens": "tts/tokens.txt", "needs": ["espeak-ng-data"]},
+  "files": [], "size": 63146118,
+  "sources": [{"url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-hi_IN-priyamvada-medium.tar.bz2", "licence": "CC BY-NC-SA 4.0 (dataset)"}]
+}

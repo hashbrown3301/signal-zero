@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -15,9 +16,16 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        ndk {
-            // 64-bit phones, 32-bit budget phones (e.g. Galaxy A03 Core, Android Go) and the x86_64 emulator.
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+    }
+
+    // One APK per CPU type instead of one with all three (296 MB → ~250 MB each):
+    // app-arm64-v8a-debug.apk (S25, M21), app-armeabi-v7a-debug.apk (A03 Core), app-x86_64-debug.apk (emulator).
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
         }
     }
 
@@ -50,6 +58,7 @@ dependencies {
     // Downloaded by scripts/fetch_models.py (not committed).
     implementation(files("libs/sherpa-onnx-1.13.7.aar"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

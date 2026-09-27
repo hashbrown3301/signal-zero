@@ -50,7 +50,7 @@ import com.itantra.bluetooth.rememberBluetoothState
 import com.itantra.comm.isValidIpv4
 
 @Composable
-fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String, Link, String) -> Unit) {
+fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String, Link, String) -> Unit, onOpenPacks: () -> Unit) {
     var peer by rememberSaveable(ui.lastPeer) { mutableStateOf(ui.lastPeer) }
     val peerValid = isValidIpv4(peer)
     var useBluetooth by rememberSaveable { mutableStateOf(false) }
@@ -72,6 +72,8 @@ fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String, Link, String) 
             },
             color = if (ui.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        OutlinedButton(onClick = onOpenPacks, modifier = Modifier.fillMaxWidth()) { Text("Language packs") }
 
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             SegmentedButton(

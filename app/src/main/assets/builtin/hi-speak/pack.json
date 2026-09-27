@@ -1,0 +1,7 @@
+{
+  "format": 1, "id": "hi-speak", "lang": "hi", "packet_code": 1, "name": "Hindi", "native": "हिन्दी", "kind": "speak",
+  "_comment": "Built into the APK: paths are asset paths (scripts/fetch_models.py puts the files there); files aren't SHA-checked.",
+  "engine": {"type": "nemo_ctc", "model": "stt/model.int8.onnx", "tokens": "stt/tokens.txt", "sample_rate": 16000, "feature_dim": 80},
+  "files": [], "size": 137680121,
+  "sources": [{"url": "https://huggingface.co/OpenVoiceOS/ai4bharat-indicconformer-hi-onnx", "licence": "MIT"}]
+}

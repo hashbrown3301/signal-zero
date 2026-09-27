@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.os.Build
 import android.os.SystemClock
@@ -17,6 +18,8 @@ import com.itantra.bluetooth.BluetoothTransport
 import com.itantra.comm.LinkState
 import com.itantra.comm.LocalAddress
 import com.itantra.comm.Transport
+import com.itantra.packs.PackManifest
+import com.itantra.packs.PackRepository
 import com.itantra.comm.TcpTransport
 import com.itantra.comm.localIpv4Addresses
 import com.itantra.session.DeviceListener
@@ -51,6 +54,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     enum class Link { WIFI, BLUETOOTH }
 
+    data class PacksUi(
+        val builtIn: List<PackManifest> = emptyList(),
+        val installed: List<PackManifest> = emptyList(),
+        val busy: Boolean = false,
+        /** Result of the last install/delete, e.g. "Installed Tamil (listen)" or an error. */
+        val message: String? = null,
+        val messageIsError: Boolean = false,
+        /** Where `adb push` should put pack zips. */
+        val incomingPath: String = "",
+    )
+
     data class UiState(
         val modelsReady: Boolean = false,
         val error: String? = null,
@@ -73,6 +87,9 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         /** When the link last came back after a drop, and how long it had been down. */
         val reconnectedAt: Long? = null,
         val lastOutageMs: Long? = null,
+        /** The "Language packs" screen is open (on top of the start screen). */
+        val showPacks: Boolean = false,
+        val packs: PacksUi = PacksUi(),
         val session: SessionState = SessionState(),
     )
 
@@ -290,6 +307,57 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 mode = null, error = null, session = SessionState(), hostAddresses = emptyList(), setupMs = null,
                 linkDownSince = null, reconnectedAt = null, lastOutageMs = null,
             )
+        }
+    }
+
+    // ---------- language packs ----------
+
+    private val packRepo by lazy { PackRepository(getApplication()) }
+
+    fun openPacks() {
+        _state.update { it.copy(showPacks = true, packs = it.packs.copy(message = null)) }
+        // Pick up anything sideloaded with adb since the last visit.
+        packAction { repo ->
+            val results = repo.installIncoming()
+            val ok = results.mapNotNull { it.getOrNull() }
+            val failed = results.mapNotNull { it.exceptionOrNull()?.message }
+            val lines = ok.map { "Installed ${it.name} (${it.kind}) from sideload" } + failed.map { "Rejected: $it" }
+            if (lines.isEmpty()) null else lines.joinToString("\n") to failed.isNotEmpty()
+        }
+    }
+
+    fun closePacks() = _state.update { it.copy(showPacks = false) }
+
+    fun importPack(uri: Uri) = packAction { repo ->
+        val m = repo.installFromUri(uri)
+        "Installed ${m.name} (${m.kind}), ${"%.1f".format(m.size / 1e6)} MB" to false
+    }
+
+    fun deletePack(id: String) = packAction { repo ->
+        if (repo.delete(id)) "Deleted $id" to false else "$id was not installed" to true
+    }
+
+    /** Runs [action] off the main thread, then refreshes the pack lists; errors become the screen's message. */
+    private fun packAction(action: (PackRepository) -> Pair<String, Boolean>?) {
+        _state.update { it.copy(packs = it.packs.copy(busy = true)) }
+        viewModelScope.launch {
+            val (message, isError) = withContext(Dispatchers.IO) {
+                try {
+                    action(packRepo) ?: (null to false)
+                } catch (e: Exception) {
+                    Log.w(TAG, "pack action failed", e)
+                    (e.message ?: e.toString()) to true
+                }
+            }
+            val (builtIn, installed, incoming) = withContext(Dispatchers.IO) {
+                Triple(packRepo.builtIn(), packRepo.installed(), packRepo.incomingDir?.absolutePath.orEmpty())
+            }
+            _state.update {
+                it.copy(
+                    packs = PacksUi(builtIn, installed, busy = false, message = message ?: it.packs.message,
+                        messageIsError = if (message != null) isError else it.packs.messageIsError, incomingPath = incoming),
+                )
+            }
         }
     }
 
