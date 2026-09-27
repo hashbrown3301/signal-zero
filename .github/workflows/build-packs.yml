@@ -83,6 +83,13 @@ jobs:
           python scripts/packs/smoke_test.py dist/packs/*/ --espeak-data "$RUNNER_TEMP/espeak-ng-data" --out dist/smoke 2>&1 | tee smoke.log
           status=${PIPESTATUS[0]}
           [ "$status" = "0" ] || python scripts/packs/annotate.py "smoke test" smoke.log
+          # Public one-line-per-pack summary on the run page (the report itself is in the artifact).
+          python - <<'EOF' || true
+          import json
+          for r in json.load(open("dist/smoke/report.json", encoding="utf-8")):
+              extra = f"round-trip CER {r['cer_vs_phrase']:.1%}: {r['text']}" if "cer_vs_phrase" in r else                       (f"{r['audio_s']} s audio" if "audio_s" in r else r.get("mode", r.get("error", "")))
+              print(f"::notice title={r['pack']} {'OK' if r['ok'] else 'FAILED'}::{r.get('size_mb', '?')} MB, {extra}")
+          EOF
           exit $status
 
       - name: Keep samples and manifests as a workflow artifact

@@ -21,7 +21,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [ ] Step 5 (**on hold**, user will run it later): 10 sentences each way over Wi-Fi and Bluetooth, then `summarize_benchmarks.py --pull`, write up in `BENCHMARKS.md`, and mark Phases 1 and 2 done
 - [ ] **Phase 3: all 10 SIH languages** (hi en mr gu bn ta te kn ml or). Plan: `docs/PHASE3_PLAN.md`; models: `docs/MODELS.md`. Mixed languages are **not** translation: the receiver hears the sender's language.
   - [x] Step 1: availability audit. All 9 IndicConformer models exist (MIT, unique files, correct scripts); TTS via Piper (hi, en, ml), Mimic3/Coqui (gu, bn), and MMS converted by us from `facebook/mms-tts-*` (mr, ta, te, kn, or). Don't use `sriram09764/itantra-tts-onnx`.
-  - [ ] Step 2: `scripts/packs/` (build_pack, export_mms, smoke_test, make_index, `languages.json`) + `.github/workflows/build-packs.yml` → **draft** release `packs-v1`. Lightweight: speak pack = STT (≈138 MB), listen pack = int8 voice (≈18–40 MB, Piper reuses the app's espeak-ng-data). Tested locally: `ml-listen` 18.3 MB. First cloud run pending.
+  - [ ] Step 2: `scripts/packs/` (build_pack, export_mms, smoke_test, make_index, `languages.json`) + `.github/workflows/build-packs.yml` → **draft** release `packs-v1`. Lightweight: speak pack = STT (≈138 MB), listen pack = int8 voice (≈18–40 MB, Piper reuses the app's espeak-ng-data). Cloud run #3 OK: `ta-listen` (MMS → int8) 38.0 MB, `ml-listen` 18.3 MB, `ta-speak` 137.7 MB; Tamil TTS → STT round trip 2.9% CER. Next: build the remaining packs.
 
 ## Rules
 
