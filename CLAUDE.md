@@ -13,7 +13,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Both phones run the current build (`013d50a`)
 - [ ] **Phase 2: Bluetooth transport (RFCOMM).** Plan: `docs/PHASE2_PLAN.md`. Don't change `PacketCodec`, `SessionManager` or the speech code.
   - [x] Step 0: plan doc; framing extracted into `comm/FramedStream.kt` (shared by TCP and Bluetooth)
-  - [ ] Step 1: permissions (`BLUETOOTH_CONNECT` only), "Bluetooth off" prompt, paired-device list
+  - [x] Step 1: permissions (`BLUETOOTH_CONNECT` only), "Bluetooth off" prompt, paired-device list (phones first)
   - [ ] Step 2: `BluetoothTransport` (host/join, PING/PONG between two phones)
   - [ ] Step 3: Wi-Fi/Bluetooth toggle, full voice loop over Bluetooth
   - [ ] Step 4: reconnect after going out of range
