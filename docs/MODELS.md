@@ -115,6 +115,18 @@ every file traces back to its original source.
 
 Fine for SIH (non-commercial). A commercial deployment would need different voices.
 
+## Built packs (Phase 3 step 2, draft release `packs-v1`)
+
+| Pack type | Size (unpacked) | Notes |
+|---|---|---|
+| Indic speak (hi mr gu bn ta te kn ml or) | 137.7 MB each | IndicConformer int8 + metadata patch |
+| en-speak | 46.4 MB | `nemo-ctc-en-conformer-small` |
+| MMS listen (mr gu bn ta te kn or) | 38.0 MB each | exported from Meta's checkpoints, int8 |
+| Piper listen (hi en ml) | 18.3–18.6 MB each | int8; reuse the app's `espeak-ng-data` |
+
+Smoke-test round trips (our own voice → our own STT, test phrase "Hello, how are you?"): ta 2.9% CER, bn 0.0%,
+en 7.1% ("hullo how are you"). This proves the models load and agree with each other; real-speech accuracy is step 3/8.
+
 ## Open questions for later steps
 - **Step 3:** actually decode a known clip per language (catches a model/vocabulary mismatch the metadata can't),
   compare Bengali/Gujarati voice options, pick the English STT, confirm the remaining licences from each MODEL_CARD.
