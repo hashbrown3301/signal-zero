@@ -1,0 +1,77 @@
+name: Verify language packs
+
+# Started by hand. Downloads packs from the draft release, tests the speak packs on real FLEURS recordings
+# (CER/WER) and has each voice read two full sentences (WAVs in the artifact). Summary on the run page.
+on:
+  workflow_dispatch:
+    inputs:
+      langs:
+        description: "Languages to verify (space-separated)"
+        required: true
+        default: "hi en mr gu bn ta te kn ml or"
+      clips:
+        description: "Real recordings per language"
+        required: true
+        default: "3"
+      release:
+        description: "Draft release tag the packs are in"
+        required: true
+        default: "packs-v1"
+
+permissions:
+  contents: write  # needed to see draft releases
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LANGS: ${{ inputs.langs }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: pip install numpy sherpa-onnx==1.13.7
+
+      - name: Download packs from the draft release
+        run: |
+          mkdir -p dist/packs
+          for l in $LANGS; do
+            gh release download "${{ inputs.release }}" -p "$l-speak.zip" -p "$l-listen.zip" -D dist/packs --clobber
+          done
+          for z in dist/packs/*.zip; do unzip -q -o "$z" -d dist/packs; done
+          ls dist/packs
+
+      - name: Get espeak-ng-data (Piper voices)
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/voice.tar.bz2" \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-hi_IN-priyamvada-medium-int8.tar.bz2
+          tar -xjf "$RUNNER_TEMP/voice.tar.bz2" -C "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP/vits-piper-hi_IN-priyamvada-medium-int8/espeak-ng-data" "$RUNNER_TEMP/espeak-ng-data"
+
+      - name: Verify with real speech
+        run: |
+          python scripts/packs/verify_packs.py --packs dist/packs --langs "$LANGS" --clips "${{ inputs.clips }}" \
+            --espeak-data "$RUNNER_TEMP/espeak-ng-data" --out dist/verify 2>&1 | tee verify.log
+          status=${PIPESTATUS[0]}
+          # One public annotation with every language's line (logs need a login).
+          python - <<'EOF' || true
+          import os
+          langs = os.environ["LANGS"].split()
+          lines = [l.rstrip() for l in open("verify.log", encoding="utf-8") if l.split(":")[0] in langs]
+          print("::notice title=Real-speech verification::" + "%0A".join(l.replace("%", "%25") for l in lines))
+          EOF
+          [ "$status" = "0" ] || python scripts/packs/annotate.py "verify" verify.log
+          exit $status
+
+      - name: Keep report and voice samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packs-verify-${{ github.run_number }}
+          path: dist/verify/
