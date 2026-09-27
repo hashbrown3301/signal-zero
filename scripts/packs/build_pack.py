@@ -125,7 +125,8 @@ def build_listen(lang: str, cfg: dict, out: Path, vits_dir: Path | None) -> tupl
                      "they are built by .github/workflows/build-packs.yml")
         from export_mms import export  # needs torch; imported only here
 
-        quant = cfg.get("quant", "all")
+        # fp16 weights + fp32 compute: 57.6 MB and RTF 0.27 for Tamil, vs int8 38 MB but RTF 1.0-1.3 (step 3).
+        quant = cfg.get("quant", "fp16w")
         info = export(cfg["iso"], LANGS["languages"][lang]["name"], LANGS["test_phrases"][lang], vits_dir, out, CACHE,
                       quant=quant)
         engine = {"type": "mms", "model": info["model_file"], "tokens": "tokens.txt",

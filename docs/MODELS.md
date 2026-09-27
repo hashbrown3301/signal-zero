@@ -111,7 +111,9 @@ every file traces back to its original source.
 | sherpa-onnx runtime | Apache-2.0 | yes |
 | MMS TTS voices (Meta) | CC-BY-NC-4.0 | **no** (attribution required) |
 | Piper `hi_IN-priyamvada` | dataset CC BY-NC-SA 4.0 | **no** |
-| Other Piper / Mimic3 / Coqui voices, English STT | per MODEL_CARD, to be confirmed in step 3 | – |
+| Piper `en_US-ljspeech` voice | public domain dataset | yes |
+| English STT (NVIDIA NeMo conformer-small) | CC-BY-4.0 per NVIDIA's model card | yes, with attribution |
+| ~~Piper `en_US-lessac`~~ (not used) | Blizzard 2013: research-only, no redistribution | no |
 
 Fine for SIH (non-commercial). A commercial deployment would need different voices.
 
@@ -126,6 +128,41 @@ Fine for SIH (non-commercial). A commercial deployment would need different voic
 
 Smoke-test round trips (our own voice → our own STT, test phrase "Hello, how are you?"): ta 2.9% CER, bn 0.0%,
 en 7.1% ("hullo how are you"). This proves the models load and agree with each other; real-speech accuracy is step 3/8.
+
+## Step 3 verdicts (real-speech verification, 2026-09-28)
+
+**Chosen models** (source of truth: `scripts/packs/languages.json`):
+
+| Lang | Speak (STT) | Listen (voice) |
+|---|---|---|
+| hi | IndicConformer | Piper `hi_IN-priyamvada-medium` int8 (18.6 MB) |
+| en | NeMo `conformer-small` (46.4 MB) | Piper `en_US-ljspeech-medium` int8 (19.4 MB, **public domain**) |
+| mr gu bn ta te kn ml or | IndicConformer (137.7 MB) | MMS, **fp16 weights** (≈ 57.6 MB) |
+
+**Real speech** (Google FLEURS test clips, native speakers; 3 clips per language, so ±5 points is noise; step 8 is the real benchmark):
+
+| | hi | en | mr | gu | bn | ta | te | kn | ml | or |
+|---|---|---|---|---|---|---|---|---|---|---|
+| CER | 3.9% | 14.4% | 6.3% | 11.0% | 5.7% | 42.7%* | 1.1% | 5.4% | 14.2% | 15.3% |
+| WER | 9.3% | 18.6% | 20.6% | 28.4% | 17.5% | 57.7%* | 8.6% | 6.7% | 36.8% | 34.3% |
+
+\* One Tamil clip is a 25 s recording where the speaker read the sentence **twice**; the model transcribed both copies
+correctly, which counts as 113% CER against the single reference. The other two clips: 4.5% and 10.6%. On 10 clips,
+Tamil is 19.8% CER; worth a closer look in step 8. Some "errors" everywhere are digits vs spoken numbers ("100" / "सौ")
+and code-mixed words ("pH"), the gotchas the plan predicts. STT runs at RTF ≈ 0.14 on a 2-vCPU cloud runner.
+
+**Decisions and why:**
+- **MMS voice format: fp16 weights, fp32 compute.** Tamil, 10 sentences: int8 = 38.0 MB but RTF 1.0–1.3 (slower than
+  real time, because ONNX Runtime runs int8 convolutions slowly); fp32 = 114.0 MB, RTF 0.26; **fp16 weights = 57.6 MB,
+  RTF 0.27**, same clarity (round trip 8.1% vs 9.0% int8 / 10.7% fp32, within noise). ONNX Runtime turns the weights back
+  into fp32 once at load time, so RAM while loaded is still about 114 MB.
+- **English STT: conformer-small** (46.4 MB, CER 10.1%, WER 18.0% on 10 clips) over Parakeet TDT-CTC 110M (131.7 MB,
+  CER 8.7%, WER 12.6%): nearly 3× smaller for a small accuracy cost.
+- **Malayalam voice: MMS** instead of Piper `meera`: round trip 6.8% vs 21.6%, and a clear licence (meera's is "see URL",
+  fine-tuned from `lessac`).
+- **English voice: `ljspeech`** instead of `lessac`: lessac's dataset (Blizzard 2013) is **research-only with no
+  redistribution**; LJ Speech is public domain.
+- **Listening check:** the user listened to the full-sentence samples of every language: all clear.
 
 ## Open questions for later steps
 - **Step 3:** actually decode a known clip per language (catches a model/vocabulary mismatch the metadata can't),

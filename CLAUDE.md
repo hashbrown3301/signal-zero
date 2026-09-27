@@ -22,7 +22,8 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 - [ ] **Phase 3: all 10 SIH languages** (hi en mr gu bn ta te kn ml or). Plan: `docs/PHASE3_PLAN.md`; models: `docs/MODELS.md`. Mixed languages are **not** translation: the receiver hears the sender's language.
   - [x] Step 1: availability audit. All 9 IndicConformer models exist (MIT, unique files, correct scripts); TTS via Piper (hi, en, ml), Mimic3/Coqui (gu, bn), and MMS converted by us from `facebook/mms-tts-*` (mr, ta, te, kn, or). Don't use `sriram09764/itantra-tts-onnx`.
   - [x] Step 2: `scripts/packs/` (build_pack, export_mms, smoke_test, make_index, `languages.json`) + `.github/workflows/build-packs.yml` → **draft** release `packs-v1`. Lightweight: speak pack = STT (≈138 MB), listen pack = int8 voice (≈18–40 MB, Piper reuses the app's espeak-ng-data). All 20 packs (10 languages × speak/listen) are in the draft release `packs-v1`. Sizes: Indic speak 137.7 MB, `en-speak` 46.4 MB, MMS listen 38.0 MB, Piper int8 listen 18.3–18.6 MB (hi, en, ml). Round trips: ta 2.9% CER, bn 0.0%, en 7.1%.
-  - [ ] Step 3: desktop verification with real speech (not only our own TTS): decode known clips per language, listen to full-sentence voice samples, confirm licences (ml voice, en STT/voice)
+  - [x] Step 3: real-speech verification in CI (`verify-packs.yml`, `pack-experiments.yml`; FLEURS clips). CER 1–6% for hi te kn bn mr; see `docs/MODELS.md`. Decisions: MMS voices as **fp16 weights** (57.6 MB, RTF 0.27 vs int8's 1.0–1.3), English STT conformer-small, Malayalam voice → MMS, English voice → Piper `ljspeech` (public domain; `lessac` is research-only). User listened: all voices clear.
+  - [ ] Step 3 wrap-up: rebuild the 9 changed listen packs in CI (`en ml mr gu bn ta te kn or`)
 
 ## Rules
 
