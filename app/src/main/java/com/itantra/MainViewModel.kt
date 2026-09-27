@@ -12,6 +12,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.itantra.audio.AudioRecorder
+import com.itantra.bluetooth.Bluetooth
+import com.itantra.bluetooth.BluetoothTransport
 import com.itantra.comm.LocalAddress
 import com.itantra.comm.TcpTransport
 import com.itantra.comm.localIpv4Addresses
@@ -38,25 +40,38 @@ import kotlinx.coroutines.withContext
 /**
  * Loads the speech engines once, then runs one [SessionManager] at a time in the mode picked
  * on the start screen. For scripted tests a session can also start from the launch intent:
- * `am start -n com.itantra/.MainActivity --es mode host|join|solo [--es peer <ip>]`.
+ * `am start -n com.itantra/.MainActivity --es mode host|join|solo [--es peer <ip>]`, or over Bluetooth
+ * `--es link bt --es mode join --es peer <MAC> [--es peer_name <name>]`.
  */
 class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewModel(app) {
 
     enum class Mode { SOLO, HOST, JOIN }
+
+    enum class Link { WIFI, BLUETOOTH }
 
     data class UiState(
         val modelsReady: Boolean = false,
         val error: String? = null,
         /** null = start screen. */
         val mode: Mode? = null,
+        val link: Link = Link.WIFI,
+        /** IP (Wi-Fi) or MAC address (Bluetooth) of the host when joining. */
         val peer: String = "",
+        /** What to show for [peer]: the IP, or the Bluetooth device name. */
+        val peerName: String = "",
         val lastPeer: String = "",
+        val lastBtAddress: String = "",
         val hostAddresses: List<LocalAddress> = emptyList(),
         val session: SessionState = SessionState(),
     )
 
     private val prefs = app.getSharedPreferences("itantra", Context.MODE_PRIVATE)
-    private val _state = MutableStateFlow(UiState(lastPeer = prefs.getString(KEY_LAST_PEER, "").orEmpty()))
+    private val _state = MutableStateFlow(
+        UiState(
+            lastPeer = prefs.getString(KEY_LAST_PEER, "").orEmpty(),
+            lastBtAddress = prefs.getString(KEY_LAST_BT, "").orEmpty(),
+        )
+    )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private val enginesReady = CompletableDeferred<Unit>()
@@ -77,9 +92,13 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 _state.update { it.copy(error = "Could not load models: ${e.message}") }
             }
         }
+        val link = if (handle.get<String>("link")?.lowercase() == "bt") Link.BLUETOOTH else Link.WIFI
         when (handle.get<String>("mode")?.lowercase()) {
-            "host" -> startSession(Mode.HOST)
-            "join" -> startSession(Mode.JOIN, handle.get<String>("peer") ?: "127.0.0.1")
+            "host" -> startSession(Mode.HOST, link = link)
+            "join" -> {
+                val peer = handle.get<String>("peer") ?: "127.0.0.1"
+                startSession(Mode.JOIN, peer, link, handle.get<String>("peer_name") ?: peer)
+            }
             "solo" -> startSession(Mode.SOLO)
         }
     }
@@ -97,22 +116,47 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         Log.i(TAG, "TTS loaded in ${SystemClock.elapsedRealtime() - t} ms")
     }
 
-    fun startSession(mode: Mode, peer: String = "") {
+    /**
+     * Starts a session. For [Link.WIFI] joins, [peer] is the host's IP; for [Link.BLUETOOTH] joins it's
+     * the paired host's MAC address and [peerName] its device name.
+     */
+    fun startSession(mode: Mode, peer: String = "", link: Link = Link.WIFI, peerName: String = peer) {
         if (_state.value.mode != null) return
-        val peerIp = peer.trim()
-        if (mode == Mode.JOIN) prefs.edit().putString(KEY_LAST_PEER, peerIp).apply()
+        val peerId = peer.trim()
+        val bt = link == Link.BLUETOOTH && mode != Mode.SOLO
+        if (mode == Mode.JOIN) prefs.edit().putString(if (bt) KEY_LAST_BT else KEY_LAST_PEER, peerId).apply()
         _state.update {
-            it.copy(mode = mode, peer = peerIp, lastPeer = if (mode == Mode.JOIN) peerIp else it.lastPeer,
-                session = SessionState())
+            it.copy(
+                mode = mode,
+                link = if (mode == Mode.SOLO) Link.WIFI else link,
+                peer = peerId,
+                peerName = peerName,
+                lastPeer = if (mode == Mode.JOIN && !bt) peerId else it.lastPeer,
+                lastBtAddress = if (mode == Mode.JOIN && bt) peerId else it.lastBtAddress,
+                session = SessionState(),
+            )
         }
         sessionJob = viewModelScope.launch {
             enginesReady.await()
-            val transport = when (mode) {
-                Mode.HOST -> TcpTransport.host()
-                Mode.JOIN -> TcpTransport.join(peerIp)
-                Mode.SOLO -> null
+            val transport = try {
+                when {
+                    mode == Mode.SOLO -> null
+                    bt -> {
+                        val adapter = Bluetooth.adapter(getApplication())
+                            ?: error("This phone has no Bluetooth")
+                        if (mode == Mode.HOST) BluetoothTransport.host(adapter)
+                        else BluetoothTransport.join(adapter, peerId, peerName)
+                    }
+                    mode == Mode.HOST -> TcpTransport.host()
+                    else -> TcpTransport.join(peerId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not start the link", e)
+                _state.update { it.copy(error = "Could not start the link: ${e.message}") }
+                return@launch
             }
-            Log.i(TAG, "Session mode $mode" + if (mode == Mode.JOIN) " → $peerIp" else "")
+            Log.i(TAG, "Session mode $mode over ${if (bt) "Bluetooth" else "Wi-Fi"}" +
+                if (mode == Mode.JOIN) " → $peerName ($peerId)" else "")
             val sm = SessionManager(
                 this,
                 DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt)),
@@ -122,7 +166,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             )
             session = sm
             sm.start()
-            if (mode == Mode.HOST) {
+            if (mode == Mode.HOST && !bt) {
                 // The hotspot may be switched on after the session starts, so keep refreshing.
                 launch {
                     while (true) {
@@ -169,7 +213,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         session = null
         sessionJob?.cancel()
         sessionJob = null
-        _state.update { it.copy(mode = null, session = SessionState(), hostAddresses = emptyList()) }
+        _state.update { it.copy(mode = null, error = null, session = SessionState(), hostAddresses = emptyList()) }
     }
 
     fun onPressStart() = session?.pressStart() ?: false
@@ -210,6 +254,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     private companion object {
         const val TAG = "iTantra"
         const val KEY_LAST_PEER = "last_peer"
+        const val KEY_LAST_BT = "last_bt_address"
         val FINAL_STATUSES = setOf(Status.ACKED, Status.FAILED, Status.PLAYED)
     }
 }

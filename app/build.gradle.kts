@@ -16,8 +16,8 @@ android {
         versionName = "0.1.0"
 
         ndk {
-            // Real phones + the x86_64 emulator; drops 32-bit libs from the sherpa-onnx AAR.
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            // 64-bit phones, 32-bit budget phones (e.g. Galaxy A03 Core, Android Go) and the x86_64 emulator.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
     }
 

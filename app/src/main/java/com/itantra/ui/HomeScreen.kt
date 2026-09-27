@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.itantra.MainViewModel
+import com.itantra.MainViewModel.Link
 import com.itantra.MainViewModel.Mode
 import com.itantra.bluetooth.Bluetooth
 import com.itantra.bluetooth.BtAvailability
@@ -49,7 +50,7 @@ import com.itantra.bluetooth.rememberBluetoothState
 import com.itantra.comm.isValidIpv4
 
 @Composable
-fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String) -> Unit) {
+fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String, Link, String) -> Unit) {
     var peer by rememberSaveable(ui.lastPeer) { mutableStateOf(ui.lastPeer) }
     val peerValid = isValidIpv4(peer)
     var useBluetooth by rememberSaveable { mutableStateOf(false) }
@@ -86,13 +87,13 @@ fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String) -> Unit) {
         }
 
         if (useBluetooth) {
-            BluetoothSection()
+            BluetoothSection(ui.lastBtAddress, onStart)
         } else {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Host", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text("Turn on this phone's hotspot. The other phone joins it and connects to you.")
-                    Button(onClick = { onStart(Mode.HOST, "") }, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { onStart(Mode.HOST, "", Link.WIFI, "") }, modifier = Modifier.fillMaxWidth()) {
                         Text("Start as Host")
                     }
                 }
@@ -112,7 +113,7 @@ fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String) -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Button(
-                        onClick = { onStart(Mode.JOIN, peer) },
+                        onClick = { onStart(Mode.JOIN, peer, Link.WIFI, peer) },
                         enabled = peerValid,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Join") }
@@ -124,7 +125,7 @@ fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String) -> Unit) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Solo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("One phone: speak, see the transcript, hear it back.")
-                OutlinedButton(onClick = { onStart(Mode.SOLO, "") }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { onStart(Mode.SOLO, "", Link.WIFI, "") }, modifier = Modifier.fillMaxWidth()) {
                     Text("Start Solo")
                 }
             }
@@ -135,11 +136,11 @@ fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String) -> Unit) {
 
 @SuppressLint("MissingPermission") // ACTION_REQUEST_ENABLE is only offered once BLUETOOTH_CONNECT is granted
 @Composable
-private fun BluetoothSection() {
+private fun BluetoothSection(lastBtAddress: String, onStart: (Mode, String, Link, String) -> Unit) {
     val context = LocalContext.current
     val bt by rememberBluetoothState()
     var denied by rememberSaveable { mutableStateOf(false) }
-    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    var selected by rememberSaveable(lastBtAddress) { mutableStateOf(lastBtAddress.ifEmpty { null }) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -191,9 +192,10 @@ private fun BluetoothSection() {
                 BtAvailability.ON -> {
                     Text("Host", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text("The other phone picks this phone from its paired list.")
-                    Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) {
-                        Text("Start as Host (Bluetooth) · coming next step")
-                    }
+                    Button(
+                        onClick = { onStart(Mode.HOST, "", Link.BLUETOOTH, "") },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Start as Host (Bluetooth)") }
                 }
             }
         }
@@ -230,9 +232,12 @@ private fun BluetoothSection() {
                         }
                     }
                 }
-                Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) {
-                    Text("Join (Bluetooth) · coming next step")
-                }
+                val host = bt.devices.firstOrNull { it.address == selected && it.isPhone }
+                Button(
+                    onClick = { host?.let { onStart(Mode.JOIN, it.address, Link.BLUETOOTH, it.name) } },
+                    enabled = host != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(host?.let { "Join ${it.name} (Bluetooth)" } ?: "Join (Bluetooth)") }
             }
         }
     }

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.itantra.MainViewModel
+import com.itantra.MainViewModel.Link
 import com.itantra.MainViewModel.Mode
 import com.itantra.comm.AddressKind
 import com.itantra.comm.LinkState
@@ -91,7 +92,9 @@ fun SessionScreen(
     ) {
         TopBar(ui, onLeave)
 
-        if (ui.mode == Mode.HOST && session.link !is LinkState.Connected) HostAddressCard(ui)
+        if (ui.mode == Mode.HOST && session.link !is LinkState.Connected) {
+            if (ui.link == Link.BLUETOOTH) BluetoothHostCard() else HostAddressCard(ui)
+        }
 
         val listState = rememberLazyListState()
         LaunchedEffect(session.messages.size) {
@@ -166,9 +169,9 @@ private fun TopBar(ui: MainViewModel.UiState, onLeave: () -> Unit) {
             Text(
                 "iTantra · " + when (ui.mode) {
                     Mode.HOST -> "Host"
-                    Mode.JOIN -> "Join ${ui.peer}"
+                    Mode.JOIN -> "Join ${ui.peerName.ifEmpty { ui.peer }}"
                     else -> "Solo"
-                },
+                } + if (ui.mode != Mode.SOLO) " · " + (if (ui.link == Link.BLUETOOTH) "Bluetooth" else "Wi-Fi") else "",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -187,6 +190,16 @@ private fun TopBar(ui: MainViewModel.UiState, onLeave: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BluetoothHostCard() {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Waiting over Bluetooth", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("On the other phone: iTantra → Bluetooth → pick this phone → Join. The phones must be paired.")
         }
     }
 }

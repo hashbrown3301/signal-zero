@@ -23,7 +23,7 @@ class TcpTransportTest {
     private fun <T : Transport> T.tracked(): T = also { open += it }
 
     private suspend fun Transport.awaitListening(): Int =
-        (state.first { it is LinkState.Listening } as LinkState.Listening).port
+        (state.first { it is LinkState.Listening } as LinkState.Listening).port!!
 
     private suspend fun Transport.awaitConnected() = state.first { it is LinkState.Connected }
 

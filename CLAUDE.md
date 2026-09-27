@@ -14,7 +14,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 - [ ] **Phase 2: Bluetooth transport (RFCOMM).** Plan: `docs/PHASE2_PLAN.md`. Don't change `PacketCodec`, `SessionManager` or the speech code.
   - [x] Step 0: plan doc; framing extracted into `comm/FramedStream.kt` (shared by TCP and Bluetooth)
   - [x] Step 1: permissions (`BLUETOOTH_CONNECT` only), "Bluetooth off" prompt, paired-device list (phones first)
-  - [ ] Step 2: `BluetoothTransport` (host/join, PING/PONG between two phones)
+  - [x] Step 2: `bluetooth/BluetoothTransport` (host/join, shared FramedStream); A03 Core ↔ S25: 4/4 delivered, RTT about 50 ms
   - [ ] Step 3: Wi-Fi/Bluetooth toggle, full voice loop over Bluetooth
   - [ ] Step 4: reconnect after going out of range
   - [ ] Step 5: 10 sentences over Wi-Fi and Bluetooth, comparison in `BENCHMARKS.md` (also closes Phase 1)
@@ -61,3 +61,4 @@ adb shell run-as com.itantra cat files/benchmarks.csv > benchmarks.csv # pull pe
 - Android 15+ lists the phone's own hotspot (e.g. `swlan0`) as a WIFI network flagged `LOCAL_NETWORK` with no WifiInfo. Don't treat it as joined Wi-Fi.
 - With the screen off, Android cuts a backgrounded app's network after about 70 s. The session screen keeps the screen on during Host/Join.
 - Second test phone: Galaxy M21 2021 (SM-M215G, Android 13, arm64). It's much slower (STT about 2.4× real time vs 11× on the S25).
+- Third test phone: Galaxy A03 Core (SM-A032F, Android 13 Go, **32-bit armeabi-v7a**, 1.9 GB RAM). Models load in about 24 s; STT is about 1× real time. The APK includes armeabi-v7a for it (about 296 MB).

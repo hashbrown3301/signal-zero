@@ -5,8 +5,10 @@ import kotlinx.coroutines.flow.StateFlow
 
 sealed interface LinkState {
     data object Idle : LinkState
-    data class Listening(val port: Int) : LinkState
-    data class Connecting(val host: String, val port: Int, val attempt: Int) : LinkState
+    /** [port] is set for TCP; null for Bluetooth. */
+    data class Listening(val port: Int? = null) : LinkState
+    /** [host] is an IP (TCP) or a device name (Bluetooth); [port] is null for Bluetooth. */
+    data class Connecting(val host: String, val port: Int?, val attempt: Int) : LinkState
     data class Connected(val peer: String) : LinkState
     data class Disconnected(val reason: String) : LinkState
     data object Closed : LinkState

@@ -65,7 +65,7 @@ class SessionManagerTest {
         pingIntervalMs: Long = 0,
     ): Pair<SessionManager, Transport> {
         val host = TcpTransport.host(port = 0)
-        val port = (host.state.first { it is LinkState.Listening } as LinkState.Listening).port
+        val port = (host.state.first { it is LinkState.Listening } as LinkState.Listening).port!!
         val sm = SessionManager(scope, listener, speaker, host, minPressMs = 0, pingIntervalMs = pingIntervalMs)
             .also { it.start() }
         val peer = TcpTransport.join("127.0.0.1", port)
