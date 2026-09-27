@@ -42,6 +42,7 @@ class OnnxModel(torch.nn.Module):
 
 
 def _fetch(iso: str, cache: Path) -> Path:
+    cache.mkdir(parents=True, exist_ok=True)
     folder = cache / f"mms-{iso}"
     if (folder / "G_100000.pth").exists():
         return folder

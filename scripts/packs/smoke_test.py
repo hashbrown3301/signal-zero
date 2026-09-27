@@ -112,6 +112,10 @@ def main() -> None:
     dirs = sorted(args.packs, key=lambda p: 0 if p.name.endswith("-listen") else 1)
     results = []
     for d in dirs:
+        if not (d / "pack.json").exists():  # a pack whose build failed (already reported by the build step)
+            print(json.dumps({"pack": d.name, "ok": False, "error": "not built (no pack.json)"}))
+            results.append({"pack": d.name, "ok": False, "error": "not built"})
+            continue
         pack = json.loads((d / "pack.json").read_text(encoding="utf-8"))
         check_files(d, pack)
         r = test_listen(d, pack, args.espeak_data, args.out) if pack["kind"] == "listen" else test_speak(d, pack, args.out)
