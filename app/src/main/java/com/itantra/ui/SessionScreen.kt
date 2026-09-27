@@ -3,6 +3,7 @@ package com.itantra.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +57,7 @@ import com.itantra.session.Direction
 import com.itantra.session.Message
 import com.itantra.session.Phase
 import com.itantra.session.Status
+import kotlinx.coroutines.delay
 
 @SuppressLint("MissingPermission") // checked in hasMicPermission() before onPressStart()
 @Composable
@@ -97,6 +100,8 @@ fun SessionScreen(
         if (ui.mode == Mode.HOST && session.link !is LinkState.Connected) {
             if (ui.link == Link.BLUETOOTH) BluetoothHostCard(ui.ownBtName) else HostAddressCard(ui)
         }
+
+        LinkBanner(ui)
 
         val listState = rememberLazyListState()
         LaunchedEffect(session.messages.size) {
@@ -199,6 +204,43 @@ private fun TopBar(ui: MainViewModel.UiState, onLeave: () -> Unit) {
             }
         }
     }
+}
+
+/** Red while an established link is down (with a running timer), briefly green after it comes back. */
+@Composable
+private fun LinkBanner(ui: MainViewModel.UiState) {
+    val now by produceState(SystemClock.elapsedRealtime(), ui.linkDownSince, ui.reconnectedAt) {
+        while (true) {
+            value = SystemClock.elapsedRealtime()
+            delay(1_000)
+        }
+    }
+    val downSince = ui.linkDownSince
+    val reconnectedAt = ui.reconnectedAt
+    val (text, color) = when {
+        downSince != null -> {
+            val what = when (val link = ui.session.link) {
+                is LinkState.Connecting -> "reconnecting… (attempt ${link.attempt})"
+                is LinkState.Listening -> "waiting for the other phone to reconnect"
+                else -> "reconnecting…"
+            }
+            val reason = ui.session.lastDisconnect?.let { "\n$it" } ?: ""
+            "Link lost – $what · ${(now - downSince) / 1000} s$reason" to Color(0xFFD32F2F)
+        }
+        reconnectedAt != null && now - reconnectedAt < RECONNECTED_BANNER_MS ->
+            "Reconnected after %.1f s".format((ui.lastOutageMs ?: 0) / 1000.0) to Color(0xFF2E7D32)
+        else -> return
+    }
+    Text(
+        text,
+        color = Color.White,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(color)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }
 
 @Composable
@@ -339,3 +381,4 @@ private fun statusText(ui: MainViewModel.UiState): String = when {
 private const val SAMPLE_RATE = 16_000
 private const val BYTES_PER_SAMPLE = 2
 private const val MIN_SHOWN_WAIT_MS = 50L
+private const val RECONNECTED_BANNER_MS = 5_000L

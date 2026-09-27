@@ -68,6 +68,11 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         val ownBtName: String = "",
         /** Joining phone: how long the successful connect attempt took ("connecting" → "connected"). */
         val setupMs: Long? = null,
+        /** When an established link dropped (elapsedRealtime); null while connected or before the first connect. */
+        val linkDownSince: Long? = null,
+        /** When the link last came back after a drop, and how long it had been down. */
+        val reconnectedAt: Long? = null,
+        val lastOutageMs: Long? = null,
         val session: SessionState = SessionState(),
     )
 
@@ -172,7 +177,8 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             )
             session = sm
             sm.start()
-            if (transport != null) launch { trackSetupTime(transport) }
+            val bench = BenchmarkLog(getApplication<Application>().filesDir, mode.name, if (bt) "bt" else "wifi")
+            if (transport != null) launch { trackLink(transport, bench) }
             if (mode == Mode.HOST && bt) {
                 val name = runCatching { Bluetooth.adapter(getApplication())?.name }.getOrNull().orEmpty()
                 _state.update { it.copy(ownBtName = name) }
@@ -187,7 +193,6 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     }
                 }
             }
-            val bench = BenchmarkLog(getApplication<Application>().filesDir, mode.name, if (bt) "bt" else "wifi")
             var logged = emptySet<String>()
             sm.state.collect { s ->
                 _state.update { it.copy(session = s) }
@@ -197,14 +202,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     }
 
     /**
-     * Setup time, measured on the joining phone: start of the connect attempt that succeeded → connected.
-     * Earlier failed attempts (e.g. the host was still loading its models) aren't link setup, so they're
-     * only logged as the total. A host's "listening → connected" is waiting for the other person and
-     * isn't recorded.
+     * Follows the link to record:
+     * - setup time on the joining phone: start of the connect attempt that succeeded → connected. Earlier
+     *   failed attempts (e.g. the host was still loading its models) are only logged as the total.
+     *   A host's "listening → connected" is waiting for the other person and isn't recorded.
+     * - outages: when an established link drops and how long it takes to come back (links.csv).
      */
-    private suspend fun trackSetupTime(transport: Transport) {
+    private suspend fun trackLink(transport: Transport, bench: BenchmarkLog) {
         var firstAttemptAt: Long? = null
         var attemptAt: Long? = null
+        var everConnected = false
+        var downSince: Long? = null
         transport.state.collect { link ->
             val now = SystemClock.elapsedRealtime()
             when (link) {
@@ -218,9 +226,31 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                         Log.i(TAG, "connected to ${link.peer} in $setup ms " +
                             "(${now - firstAttemptAt!!} ms including earlier attempts)")
                     }
+                    val outage = downSince?.let { now - it }
+                    if (outage != null) {
+                        Log.i(TAG, "reconnected to ${link.peer} after $outage ms outage")
+                        withContext(Dispatchers.IO) {
+                            runCatching { bench.linkEvent("reconnected", outage, "setup=${setup ?: ""} ms") }
+                        }
+                    }
+                    everConnected = true
+                    downSince = null
                     firstAttemptAt = null
                     attemptAt = null
-                    _state.update { it.copy(setupMs = setup) }
+                    _state.update {
+                        it.copy(
+                            setupMs = setup,
+                            linkDownSince = null,
+                            reconnectedAt = if (outage != null) now else it.reconnectedAt,
+                            lastOutageMs = outage ?: it.lastOutageMs,
+                        )
+                    }
+                }
+                is LinkState.Disconnected -> if (everConnected && downSince == null) {
+                    downSince = now
+                    Log.i(TAG, "link lost: ${link.reason}")
+                    withContext(Dispatchers.IO) { runCatching { bench.linkEvent("lost", null, link.reason) } }
+                    _state.update { it.copy(linkDownSince = now) }
                 }
                 else -> Unit
             }
@@ -256,7 +286,10 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         sessionJob?.cancel()
         sessionJob = null
         _state.update {
-            it.copy(mode = null, error = null, session = SessionState(), hostAddresses = emptyList(), setupMs = null)
+            it.copy(
+                mode = null, error = null, session = SessionState(), hostAddresses = emptyList(), setupMs = null,
+                linkDownSince = null, reconnectedAt = null, lastOutageMs = null,
+            )
         }
     }
 

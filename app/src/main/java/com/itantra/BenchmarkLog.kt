@@ -18,6 +18,7 @@ import java.util.Locale
 class BenchmarkLog(dir: File, private val mode: String, private val link: String) {
 
     private val file = File(dir, "benchmarks.csv")
+    private val linkFile = File(dir, "links.csv")
     private val session = stamp("yyyyMMdd-HHmmss")
 
     init {
@@ -48,6 +49,21 @@ class BenchmarkLog(dir: File, private val mode: String, private val link: String
         )
     }
 
+    /** One row per link event in files/links.csv: "lost" (with the reason) or "reconnected" (with the outage length). */
+    @Synchronized
+    fun linkEvent(event: String, durationMs: Long?, detail: String) {
+        val fresh = !linkFile.exists()
+        linkFile.appendText(
+            buildString {
+                if (fresh) appendLine(LINK_HEADER.joinToString(","))
+                appendLine(
+                    listOf(session, stamp("HH:mm:ss.SSS"), Build.MODEL, mode, link, event, durationMs, quote(detail))
+                        .joinToString(",") { it?.toString() ?: "" }
+                )
+            }
+        )
+    }
+
     private fun stamp(pattern: String) = SimpleDateFormat(pattern, Locale.US).format(Date())
 
     private fun quote(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
@@ -58,5 +74,6 @@ class BenchmarkLog(dir: File, private val mode: String, private val link: String
             "recorded_s", "speech_s", "vad_ms", "stt_ms", "tts_ms", "queue_ms", "ack_after_ms",
             "peer_tts_ms", "peer_queue_ms", "rtt_ms", "e2e_ms", "other_ms", "text",
         )
+        val LINK_HEADER = listOf("session", "time", "device", "mode", "link", "event", "duration_ms", "detail")
     }
 }
