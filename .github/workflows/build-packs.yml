@@ -62,13 +62,27 @@ jobs:
           mv "$RUNNER_TEMP/vits-piper-hi_IN-priyamvada-medium-int8/espeak-ng-data" "$RUNNER_TEMP/espeak-ng-data"
 
       - name: Build packs
+        # Keeps going after a failed pack. A failure's last lines become a public annotation (logs need a login),
+        # so the error can be read from the run summary.
         run: |
+          failed=""
           for p in $PACKS; do
-            python scripts/packs/build_pack.py "${p%%:*}" "${p##*:}" --vits-dir "$RUNNER_TEMP/vits"
+            if ! python scripts/packs/build_pack.py "${p%%:*}" "${p##*:}" --vits-dir "$RUNNER_TEMP/vits" 2>&1 | tee "build-${p/:/-}.log"; then :; fi
+            if [ "${PIPESTATUS[0]}" != "0" ] || [ ! -f "dist/packs/${p/:/-}/pack.json" ]; then
+              failed="$failed $p"
+              python scripts/packs/annotate.py "build $p" "build-${p/:/-}.log"
+            fi
           done
+          if [ -n "$failed" ]; then echo "FAILED:$failed"; fi
+          ls dist/packs/*/pack.json >/dev/null 2>&1 || { echo "no pack was built"; exit 1; }
+          echo "FAILED_PACKS=$failed" >> "$GITHUB_ENV"
 
       - name: Smoke test
-        run: python scripts/packs/smoke_test.py dist/packs/*/ --espeak-data "$RUNNER_TEMP/espeak-ng-data" --out dist/smoke
+        run: |
+          python scripts/packs/smoke_test.py dist/packs/*/ --espeak-data "$RUNNER_TEMP/espeak-ng-data" --out dist/smoke 2>&1 | tee smoke.log
+          status=${PIPESTATUS[0]}
+          [ "$status" = "0" ] || python scripts/packs/annotate.py "smoke test" smoke.log
+          exit $status
 
       - name: Keep samples and manifests as a workflow artifact
         if: always()
@@ -89,3 +103,9 @@ jobs:
           python scripts/packs/make_index.py dist/packs dist/old/index.json > dist/index.json
           gh release upload "$TAG" dist/packs/*.zip dist/index.json --clobber
           gh release view "$TAG" --json isDraft,assets --jq '"draft=\(.isDraft)", (.assets[] | "\(.name)  \(.size)")'
+
+      - name: Fail the run if any pack failed
+        if: env.FAILED_PACKS != ''
+        run: |
+          echo "::error title=Packs that failed::$FAILED_PACKS"
+          exit 1
