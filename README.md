@@ -51,3 +51,9 @@ adb logcat -s iTantra:* AndroidRuntime:E
 
 - A real phone is recommended. The x86_64 emulator is supported, but it needs roughly 16 GB of PC RAM to run alongside Gradle.
 - The debug APK is about 275 MB because the models are bundled as uncompressed assets.
+
+## License
+
+The code in this repository is MIT-licensed (see [LICENSE](LICENSE)), © 2026 Signal Zero.
+The models are **not** included and keep their own licenses (see [Models](#models)); in particular the Piper
+Hindi voice's dataset is CC BY-NC-SA 4.0 (non-commercial).
