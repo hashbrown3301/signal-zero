@@ -72,7 +72,9 @@ def _ids(text: str, symbols: list[str], add_blank: bool) -> list[int]:
 
 
 @torch.no_grad()
-def export(iso: str, language: str, test_phrase: str, vits_dir: Path, out: Path, cache: Path) -> dict:
+def export(iso: str, language: str, test_phrase: str, vits_dir: Path, out: Path, cache: Path, quant: str = "all") -> dict:
+    """quant: "all" (every weight int8, smallest), "no-conv" (int8 except convolutions, which ONNX Runtime often runs
+    slower as int8), or "none" (fp32)."""
     SynthesizerTrn = _load_vits(vits_dir)
     src = _fetch(iso, cache)
     hps = json.loads((src / "config.json").read_text(encoding="utf-8"))
@@ -131,15 +133,25 @@ def export(iso: str, language: str, test_phrase: str, vits_dir: Path, out: Path,
     onnx.save(model, str(fp32))
 
     int8 = out / "model.int8.onnx"
-    quantize_dynamic(str(fp32), str(int8), weight_type=QuantType.QUInt8)
+    if quant == "all":
+        quantize_dynamic(str(fp32), str(int8), weight_type=QuantType.QUInt8)
+    elif quant == "no-conv":
+        quantize_dynamic(str(fp32), str(int8), weight_type=QuantType.QUInt8,
+                         op_types_to_quantize=["MatMul", "Gemm", "Attention", "LSTM", "Gather"])
+    elif quant == "none":
+        fp32.replace(out / "model.onnx")
+        fp32 = out / "model.onnx"
+        int8 = None
+    else:
+        raise ValueError(f"unknown quant {quant}")
     # quantize_dynamic keeps metadata_props on recent onnxruntime; re-add to be sure.
-    q = onnx.load(str(int8))
+    q = onnx.load(str(int8 or fp32))
     if not {p.key for p in q.metadata_props} >= set(meta):
         del q.metadata_props[:]
         for k, v in meta.items():
             p = q.metadata_props.add()
             p.key, p.value = k, str(v)
-        onnx.save(q, str(int8))
+        onnx.save(q, str(int8 or fp32))
 
     # tokens.txt in sherpa-onnx format ("<symbol> <id>"; a space symbol is written as a leading space).
     with open(out / "tokens.txt", "w", encoding="utf-8") as f:
@@ -150,12 +162,13 @@ def export(iso: str, language: str, test_phrase: str, vits_dir: Path, out: Path,
     feed = {"x": x.numpy(), "x_length": np.array([x.shape[1]], dtype=np.int64),
             "noise_scale": np.array([0.667], dtype=np.float32), "length_scale": np.array([1.0], dtype=np.float32),
             "noise_scale_w": np.array([0.8], dtype=np.float32)}
-    for path in (fp32, int8):
+    for path in [p for p in (fp32, int8) if p]:
         y = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"]).run(None, feed)[0]
         secs = y.size / meta["sample_rate"]
         print(f"  {path.name}: {path.stat().st_size / 1e6:.1f} MB, test phrase → {secs:.2f} s audio, "
               f"rms {float(np.sqrt(np.mean(y ** 2))):.4f}")
         if secs < 0.3:
             sys.exit(f"MMS {iso}: {path.name} produced almost no audio")
-    fp32.unlink()
-    return meta
+    if int8:
+        fp32.unlink()
+    return {**meta, "model_file": (int8 or fp32).name}

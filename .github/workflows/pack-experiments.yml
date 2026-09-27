@@ -1,0 +1,104 @@
+name: Pack experiments
+
+# Phase 3 step 3 comparisons (started by hand). Builds alternative packs side by side and verifies each on
+# real FLEURS speech; one summary annotation on the run page, full report + WAVs in the artifact.
+#   1. Tamil MMS voice: int8 everywhere vs int8 except convolutions vs fp32 (size vs TTS speed)
+#   2. English STT: NeMo conformer-small (46 MB) vs Parakeet TDT-CTC 110M
+#   3. Malayalam voice: Piper meera (licence unclear) vs Meta MMS mal
+on:
+  workflow_dispatch:
+    inputs:
+      clips:
+        description: "Real recordings per comparison"
+        required: true
+        default: "10"
+      release:
+        description: "Draft release with the current packs"
+        required: true
+        default: "packs-v1"
+
+permissions:
+  contents: write  # needed to read draft releases
+
+jobs:
+  experiments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CLIPS: ${{ inputs.clips }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools (incl. MMS export)
+        run: |
+          pip install onnx onnxruntime huggingface_hub numpy sherpa-onnx==1.13.7
+          pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install scipy
+          git clone --depth 1 https://github.com/jaywalnut310/vits "$RUNNER_TEMP/vits"
+          curl -fsSL -o "$RUNNER_TEMP/voice.tar.bz2" \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-hi_IN-priyamvada-medium-int8.tar.bz2
+          tar -xjf "$RUNNER_TEMP/voice.tar.bz2" -C "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP/vits-piper-hi_IN-priyamvada-medium-int8/espeak-ng-data" "$RUNNER_TEMP/espeak-ng-data"
+
+      - name: Current packs from the draft release
+        run: |
+          mkdir -p dist/packs
+          gh release download "${{ inputs.release }}" -D dist/packs --clobber \
+            -p "ta-speak.zip" -p "en-speak.zip" -p "en-listen.zip" -p "ml-speak.zip" -p "ml-listen.zip"
+          for z in dist/packs/*.zip; do unzip -q -o "$z" -d dist/packs; done
+
+      - name: Build alternatives
+        run: |
+          V="--vits-dir $RUNNER_TEMP/vits"
+          python scripts/packs/build_pack.py ta listen $V --variant q8     --override '{"quant": "all"}'
+          python scripts/packs/build_pack.py ta listen $V --variant noconv --override '{"quant": "no-conv"}'
+          python scripts/packs/build_pack.py ta listen $V --variant fp32   --override '{"quant": "none"}'
+          python scripts/packs/build_pack.py en speak     --variant parakeet \
+            --override '{"asset": "sherpa-onnx-nemo-parakeet_tdt_ctc_110m-en-36000-int8"}'
+          python scripts/packs/build_pack.py ml listen $V --variant mms \
+            --override '{"type": "mms", "source": "mms", "iso": "mal"}'
+          for d in dist/packs/*/; do python -c "import json,sys; p=json.load(open('$d/pack.json')); print(p['id'], round(p['size']/1e6,1), 'MB')"; done
+
+      - name: Compare on real speech
+        run: |
+          E="--espeak-data $RUNNER_TEMP/espeak-ng-data --out dist/exp --clips $CLIPS"
+          set +e
+          for v in q8 noconv fp32; do
+            python scripts/packs/verify_packs.py --packs dist/packs --langs ta $E --listen-id "{lang}-listen-$v" --report ta-$v.json
+          done
+          python scripts/packs/verify_packs.py --packs dist/packs --langs en $E --report en-small.json
+          python scripts/packs/verify_packs.py --packs dist/packs --langs en $E --speak-id "{lang}-speak-parakeet" --report en-parakeet.json
+          python scripts/packs/verify_packs.py --packs dist/packs --langs ml $E --report ml-piper.json
+          python scripts/packs/verify_packs.py --packs dist/packs --langs ml $E --listen-id "{lang}-listen-mms" --report ml-mms.json
+          set -e
+          python - <<'EOF'
+          import json, pathlib, statistics
+          sizes = {p.parent.name: json.loads(p.read_text())["size"] / 1e6 for p in pathlib.Path("dist/packs").glob("*/pack.json")}
+          lines = []
+          for rep in sorted(pathlib.Path("dist/exp").glob("*.json")):
+              for r in json.loads(rep.read_text(encoding="utf-8")):
+                  if "error" in r:
+                      lines.append(f"{rep.stem}: FAILED {r['error']}")
+                      continue
+                  stt_rtf = statistics.mean(x["rtf"] for x in r["real_speech"])
+                  tts_rtf = statistics.mean(x["tts_rtf"] for x in r["voice"])
+                  lines.append(f"{rep.stem}: speak {r['speak']} ({sizes.get(r['speak'], 0):.1f} MB) CER {r['real_cer']:.1%} "
+                               f"WER {r['real_wer']:.1%} RTF {stt_rtf:.2f} | listen {r['listen']} ({sizes.get(r['listen'], 0):.1f} MB) "
+                               f"round-trip CER {r['voice_round_trip_cer']:.1%} TTS RTF {tts_rtf:.2f}")
+          print("\n".join(lines))
+          print("::notice title=Pack experiments::" + "%0A".join(l.replace("%", "%25") for l in lines))
+          EOF
+
+      - name: Keep reports and voice samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pack-experiments-${{ github.run_number }}
+          path: |
+            dist/exp/
+            dist/packs/*/pack.json

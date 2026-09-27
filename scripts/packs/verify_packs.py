@@ -164,10 +164,11 @@ def write_wav(path: Path, samples, rate: int) -> None:
 
 # ---------- main ----------
 
-def verify(lang: str, packs: Path, clips_n: int, espeak: Path | None, out: Path) -> dict:
-    result = {"lang": lang}
+def verify(lang: str, packs: Path, clips_n: int, espeak: Path | None, out: Path,
+           speak_id: str = "{lang}-speak", listen_id: str = "{lang}-listen") -> dict:
+    result = {"lang": lang, "speak": speak_id.format(lang=lang), "listen": listen_id.format(lang=lang)}
     clips = fleurs_clips(lang, clips_n)
-    rec = recognizer(packs / f"{lang}-speak")
+    rec = recognizer(packs / result["speak"])
     real = []
     for c in clips:
         hyp, secs = transcribe(rec, c["samples"], c["rate"])
@@ -178,14 +179,14 @@ def verify(lang: str, packs: Path, clips_n: int, espeak: Path | None, out: Path)
     result["real_cer"] = round(float(np.mean([r["cer"] for r in real])), 3)
     result["real_wer"] = round(float(np.mean([r["wer"] for r in real])), 3)
 
-    tts = voice(packs / f"{lang}-listen", espeak)
+    tts = voice(packs / result["listen"], espeak)
     samples = []
     for i, c in enumerate(clips[:2], 1):
         t = time.perf_counter()
         audio = tts.generate(c["text"], sid=0, speed=1.0)
         gen = time.perf_counter() - t
         secs = len(audio.samples) / audio.sample_rate
-        wav = out / f"{lang}-voice-{i}.wav"
+        wav = out / f"{result['listen']}-voice-{i}.wav"
         write_wav(wav, audio.samples, audio.sample_rate)
         back, _ = transcribe(rec, np.asarray(audio.samples, dtype=np.float32), audio.sample_rate)
         samples.append({"wav": wav.name, "text": c["text"], "audio_s": round(secs, 2), "tts_rtf": round(gen / max(secs, 1e-6), 3),
@@ -203,14 +204,18 @@ def main() -> None:
     ap.add_argument("--clips", type=int, default=3)
     ap.add_argument("--espeak-data", type=Path)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--speak-id", default="{lang}-speak", help="pack folder name template (experiments)")
+    ap.add_argument("--listen-id", default="{lang}-listen", help="pack folder name template (experiments)")
+    ap.add_argument("--report", default="report.json", help="report file name inside --out")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
     results, failed = [], []
     for lang in args.langs.split():
         try:
-            r = verify(lang, args.packs, args.clips, args.espeak_data, args.out)
-            print(f"{lang}: real speech CER {r['real_cer']:.1%} WER {r['real_wer']:.1%} | "
+            r = verify(lang, args.packs, args.clips, args.espeak_data, args.out, args.speak_id, args.listen_id)
+            tag = "" if (args.speak_id, args.listen_id) == ("{lang}-speak", "{lang}-listen") else                 f" [{r['speak']} + {r['listen']}]"
+            print(f"{lang}:{tag} real speech CER {r['real_cer']:.1%} WER {r['real_wer']:.1%} | "
                   f"voice round trip CER {r['voice_round_trip_cer']:.1%} | "
                   f"STT RTF {np.mean([x['rtf'] for x in r['real_speech']]):.2f}, "
                   f"TTS RTF {np.mean([x['tts_rtf'] for x in r['voice']]):.2f}")
@@ -219,7 +224,7 @@ def main() -> None:
             failed.append(lang)
             print(f"{lang}: FAILED {r['error']}")
         results.append(r)
-    (args.out / "report.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+    (args.out / args.report).write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
     if failed:
         sys.exit(f"failed: {' '.join(failed)}")
 

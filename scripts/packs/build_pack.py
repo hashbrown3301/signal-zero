@@ -125,14 +125,16 @@ def build_listen(lang: str, cfg: dict, out: Path, vits_dir: Path | None) -> tupl
                      "they are built by .github/workflows/build-packs.yml")
         from export_mms import export  # needs torch; imported only here
 
-        info = export(cfg["iso"], LANGS["languages"][lang]["name"], LANGS["test_phrases"][lang], vits_dir, out, CACHE)
-        engine = {"type": "mms", "model": "model.int8.onnx", "tokens": "tokens.txt",
-                  "sample_rate": info["sample_rate"]}
+        quant = cfg.get("quant", "all")
+        info = export(cfg["iso"], LANGS["languages"][lang]["name"], LANGS["test_phrases"][lang], vits_dir, out, CACHE,
+                      quant=quant)
+        engine = {"type": "mms", "model": info["model_file"], "tokens": "tokens.txt",
+                  "sample_rate": info["sample_rate"], "quant": quant}
         vits_commit = subprocess.run(["git", "-C", str(vits_dir), "rev-parse", "HEAD"],
                                      capture_output=True, text=True).stdout.strip()
         sources = [
             {"url": f"https://dl.fbaipublicfiles.com/mms/tts/{cfg['iso']}.tar.gz", "licence": "CC-BY-NC-4.0",
-             "note": "Meta MMS original checkpoint; exported with scripts/packs/export_mms.py and int8-quantized"},
+             "note": f"Meta MMS original checkpoint; exported with scripts/packs/export_mms.py (quantization: {quant})"},
             {"url": "https://github.com/jaywalnut310/vits", "commit": vits_commit, "licence": "MIT",
              "note": "model code used for the export"},
         ]
@@ -143,11 +145,14 @@ def build_listen(lang: str, cfg: dict, out: Path, vits_dir: Path | None) -> tupl
 
 # ---------- pack ----------
 
-def build(lang: str, kind: str, vits_dir: Path | None = None) -> Path:
+def build(lang: str, kind: str, vits_dir: Path | None = None, variant: str = "", override: dict | None = None) -> Path:
+    """[variant] + [override] build an alternative (e.g. another model) as <lang>-<kind>-<variant> for comparison."""
     if lang not in LANGS["languages"]:
         sys.exit(f"unknown language {lang}; known: {', '.join(LANGS['languages'])}")
-    meta = LANGS["languages"][lang]
-    pack_id = f"{lang}-{kind}"
+    meta = json.loads(json.dumps(LANGS["languages"][lang]))
+    if override:
+        meta[kind] = {**meta[kind], **override} if override.get("type") in (None, meta[kind].get("type")) else override
+    pack_id = f"{lang}-{kind}" + (f"-{variant}" if variant else "")
     out = DIST / pack_id
     if out.exists():
         shutil.rmtree(out)
@@ -195,8 +200,11 @@ def main() -> None:
     ap.add_argument("lang")
     ap.add_argument("kind", choices=["speak", "listen"])
     ap.add_argument("--vits-dir", type=Path, help="checkout of github.com/jaywalnut310/vits (MMS voices only)")
+    ap.add_argument("--variant", default="", help="build an alternative as <lang>-<kind>-<variant> (experiments)")
+    ap.add_argument("--override", default="",
+                    help="""JSON merged into the speak/listen config, e.g. {"quant": "no-conv"}""")
     args = ap.parse_args()
-    build(args.lang, args.kind, args.vits_dir)
+    build(args.lang, args.kind, args.vits_dir, args.variant, json.loads(args.override) if args.override else None)
 
 
 if __name__ == "__main__":
