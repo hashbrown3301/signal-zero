@@ -28,7 +28,7 @@ Test sentence: a 20-word Hindi sentence spoken live by the user. Transcript prod
 
 > मेरा नाम [नाम] है और मैं मैं [उम्र] साल का हूँ क्या आप मुझे आपका नंबर दे सकते हो क्या
 
-The user confirmed the transcript was accurate.
+The user confirmed the transcript was accurate. (Name and age replaced with placeholders.)
 
 | Recorded | Speech after VAD | VAD | STT | TTS | **Total** |
 |---|---|---|---|---|---|
