@@ -15,7 +15,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Step 0: plan doc; framing extracted into `comm/FramedStream.kt` (shared by TCP and Bluetooth)
   - [x] Step 1: permissions (`BLUETOOTH_CONNECT` only), "Bluetooth off" prompt, paired-device list (phones first)
   - [x] Step 2: `bluetooth/BluetoothTransport` (host/join, shared FramedStream); A03 Core ↔ S25: 4/4 delivered, RTT about 50 ms
-  - [ ] Step 3: Wi-Fi/Bluetooth toggle, full voice loop over Bluetooth
+  - [x] Step 3: full voice loop over Bluetooth (A03 Core host ↔ S25, 6/6 delivered, RTT 40–44 ms); CSV `link` + `setup_ms` columns; Bluetooth setup about 3.1 s
   - [ ] Step 4: reconnect after going out of range
   - [ ] Step 5: 10 sentences over Wi-Fi and Bluetooth, comparison in `BENCHMARKS.md` (also closes Phase 1)
 

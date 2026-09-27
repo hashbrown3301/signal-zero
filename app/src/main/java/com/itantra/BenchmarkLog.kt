@@ -11,21 +11,33 @@ import java.util.Locale
  * Appends one CSV row per finished message to `files/benchmarks.csv`, so benchmark runs survive
  * logcat's small ring buffer. Pull it with:
  *   adb shell run-as com.itantra cat files/benchmarks.csv > benchmarks.csv
+ *
+ * A file written with an older column layout is renamed to `benchmarks-old-<time>.csv` first,
+ * so rows with different columns never end up in the same file.
  */
-class BenchmarkLog(dir: File, private val mode: String) {
+class BenchmarkLog(dir: File, private val mode: String, private val link: String) {
 
     private val file = File(dir, "benchmarks.csv")
     private val session = stamp("yyyyMMdd-HHmmss")
 
+    init {
+        val header = HEADER.joinToString(",")
+        if (file.exists() && file.useLines { it.firstOrNull() } != header) {
+            file.renameTo(File(dir, "benchmarks-old-$session.csv"))
+        }
+    }
+
+    /** [setupMs]: how long the current connection took to establish (joining phone only). */
     @Synchronized
-    fun append(m: Message) {
+    fun append(m: Message, setupMs: Long?) {
         val fresh = !file.exists()
         file.appendText(
             buildString {
                 if (fresh) appendLine(HEADER.joinToString(","))
                 appendLine(
                     listOf(
-                        session, stamp("HH:mm:ss.SSS"), Build.MODEL, mode, m.direction, m.seq, m.status,
+                        session, stamp("HH:mm:ss.SSS"), Build.MODEL, mode, link, setupMs,
+                        m.direction, m.seq, m.status,
                         m.wireBytes, m.recordedSec?.let { "%.2f".format(Locale.US, it) },
                         m.speechSec?.let { "%.2f".format(Locale.US, it) },
                         m.vadMs, m.sttMs, m.ttsMs, m.queueMs, m.ackAfterMs, m.peerTtsMs, m.peerQueueMs,
@@ -42,7 +54,7 @@ class BenchmarkLog(dir: File, private val mode: String) {
 
     private companion object {
         val HEADER = listOf(
-            "session", "time", "device", "mode", "direction", "seq", "status", "wire_bytes",
+            "session", "time", "device", "mode", "link", "setup_ms", "direction", "seq", "status", "wire_bytes",
             "recorded_s", "speech_s", "vad_ms", "stt_ms", "tts_ms", "queue_ms", "ack_after_ms",
             "peer_tts_ms", "peer_queue_ms", "rtt_ms", "e2e_ms", "other_ms", "text",
         )

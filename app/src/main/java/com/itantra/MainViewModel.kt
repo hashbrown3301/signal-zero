@@ -14,7 +14,9 @@ import androidx.lifecycle.viewModelScope
 import com.itantra.audio.AudioRecorder
 import com.itantra.bluetooth.Bluetooth
 import com.itantra.bluetooth.BluetoothTransport
+import com.itantra.comm.LinkState
 import com.itantra.comm.LocalAddress
+import com.itantra.comm.Transport
 import com.itantra.comm.TcpTransport
 import com.itantra.comm.localIpv4Addresses
 import com.itantra.session.DeviceListener
@@ -62,6 +64,10 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         val lastPeer: String = "",
         val lastBtAddress: String = "",
         val hostAddresses: List<LocalAddress> = emptyList(),
+        /** This phone's Bluetooth name, shown on the Bluetooth host card. */
+        val ownBtName: String = "",
+        /** Joining phone: how long the successful connect attempt took ("connecting" → "connected"). */
+        val setupMs: Long? = null,
         val session: SessionState = SessionState(),
     )
 
@@ -166,6 +172,11 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             )
             session = sm
             sm.start()
+            if (transport != null) launch { trackSetupTime(transport) }
+            if (mode == Mode.HOST && bt) {
+                val name = runCatching { Bluetooth.adapter(getApplication())?.name }.getOrNull().orEmpty()
+                _state.update { it.copy(ownBtName = name) }
+            }
             if (mode == Mode.HOST && !bt) {
                 // The hotspot may be switched on after the session starts, so keep refreshing.
                 launch {
@@ -176,11 +187,42 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     }
                 }
             }
-            val bench = BenchmarkLog(getApplication<Application>().filesDir, mode.name)
+            val bench = BenchmarkLog(getApplication<Application>().filesDir, mode.name, if (bt) "bt" else "wifi")
             var logged = emptySet<String>()
             sm.state.collect { s ->
                 _state.update { it.copy(session = s) }
                 logged = logNewEvents(s, logged, bench)
+            }
+        }
+    }
+
+    /**
+     * Setup time, measured on the joining phone: start of the connect attempt that succeeded → connected.
+     * Earlier failed attempts (e.g. the host was still loading its models) aren't link setup, so they're
+     * only logged as the total. A host's "listening → connected" is waiting for the other person and
+     * isn't recorded.
+     */
+    private suspend fun trackSetupTime(transport: Transport) {
+        var firstAttemptAt: Long? = null
+        var attemptAt: Long? = null
+        transport.state.collect { link ->
+            val now = SystemClock.elapsedRealtime()
+            when (link) {
+                is LinkState.Connecting -> {
+                    if (firstAttemptAt == null) firstAttemptAt = now
+                    attemptAt = now
+                }
+                is LinkState.Connected -> {
+                    val setup = attemptAt?.let { now - it }
+                    if (setup != null) {
+                        Log.i(TAG, "connected to ${link.peer} in $setup ms " +
+                            "(${now - firstAttemptAt!!} ms including earlier attempts)")
+                    }
+                    firstAttemptAt = null
+                    attemptAt = null
+                    _state.update { it.copy(setupMs = setup) }
+                }
+                else -> Unit
             }
         }
     }
@@ -213,7 +255,9 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         session = null
         sessionJob?.cancel()
         sessionJob = null
-        _state.update { it.copy(mode = null, error = null, session = SessionState(), hostAddresses = emptyList()) }
+        _state.update {
+            it.copy(mode = null, error = null, session = SessionState(), hostAddresses = emptyList(), setupMs = null)
+        }
     }
 
     fun onPressStart() = session?.pressStart() ?: false
@@ -227,7 +271,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             if (key in seen) continue
             if (m.status in FINAL_STATUSES) {
                 viewModelScope.launch(Dispatchers.IO) {
-                    runCatching { bench.append(m) }.onFailure { Log.w(TAG, "benchmark log failed", it) }
+                    runCatching { bench.append(m, _state.value.setupMs) }.onFailure { Log.w(TAG, "benchmark log failed", it) }
                 }
             }
             val dir = when (m.direction) {

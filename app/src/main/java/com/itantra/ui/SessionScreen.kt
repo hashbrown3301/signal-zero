@@ -48,6 +48,8 @@ import com.itantra.MainViewModel
 import com.itantra.MainViewModel.Link
 import com.itantra.MainViewModel.Mode
 import com.itantra.comm.AddressKind
+import com.itantra.bluetooth.BtAvailability
+import com.itantra.bluetooth.rememberBluetoothState
 import com.itantra.comm.LinkState
 import com.itantra.session.Direction
 import com.itantra.session.Message
@@ -93,7 +95,7 @@ fun SessionScreen(
         TopBar(ui, onLeave)
 
         if (ui.mode == Mode.HOST && session.link !is LinkState.Connected) {
-            if (ui.link == Link.BLUETOOTH) BluetoothHostCard() else HostAddressCard(ui)
+            if (ui.link == Link.BLUETOOTH) BluetoothHostCard(ui.ownBtName) else HostAddressCard(ui)
         }
 
         val listState = rememberLazyListState()
@@ -118,8 +120,11 @@ fun SessionScreen(
             items(session.messages, key = { it.id }) { MessageBubble(it) }
         }
 
+        val btOff = ui.link == Link.BLUETOOTH && ui.mode != Mode.SOLO &&
+            rememberBluetoothState().value.availability != BtAvailability.ON
         val notice = when {
             permissionDenied -> "Microphone permission is needed to hear you"
+            btOff -> "Bluetooth is off or not allowed – turn it on to reconnect"
             ui.error != null -> ui.error
             else -> session.notice
         }
@@ -177,8 +182,10 @@ private fun TopBar(ui: MainViewModel.UiState, onLeave: () -> Unit) {
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+                val setup = ui.setupMs?.takeIf { ui.session.link is LinkState.Connected }
                 Text(
-                    " $label" + (ui.session.rttMs?.let { " · RTT $it ms" } ?: ""),
+                    " $label" + (ui.session.rttMs?.let { " · RTT $it ms" } ?: "") +
+                        (setup?.let { " · setup %.1f s".format(it / 1000.0) } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -195,10 +202,14 @@ private fun TopBar(ui: MainViewModel.UiState, onLeave: () -> Unit) {
 }
 
 @Composable
-private fun BluetoothHostCard() {
+private fun BluetoothHostCard(ownName: String) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Waiting over Bluetooth", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (ownName.isNotEmpty()) {
+                Text("Other phone: pick", style = MaterialTheme.typography.bodyMedium)
+                Text(ownName, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            }
             Text("On the other phone: iTantra → Bluetooth → pick this phone → Join. The phones must be paired.")
         }
     }
