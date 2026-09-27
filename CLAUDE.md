@@ -11,14 +11,14 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [ ] Step 7 exit test (**on hold**): 10 sentences each way (`docs/phase1_sentences.md`), then pull both `benchmarks.csv` files and finish the write-up. A free 9-message conversation on 2026-09-27 went 9/9 but isn't the scripted run.
   - [x] Host card labels IPs as hotspot vs Wi-Fi (via Android's joined-Wi-Fi interfaces) and shows the hotspot first
   - [x] Both phones run the current build (`013d50a`)
-- [ ] **Phase 2: Bluetooth transport (RFCOMM).** Plan: `docs/PHASE2_PLAN.md`. Don't change `PacketCodec`, `SessionManager` or the speech code.
+- [ ] **Phase 2: Bluetooth transport (RFCOMM).** Working end to end (steps 0–4 done); the **exit test is on hold** (step 5, shared with Phase 1). Plan: `docs/PHASE2_PLAN.md`. Don't change `PacketCodec`, `SessionManager` or the speech code.
   - [x] Step 0: plan doc; framing extracted into `comm/FramedStream.kt` (shared by TCP and Bluetooth)
   - [x] Step 1: permissions (`BLUETOOTH_CONNECT` only), "Bluetooth off" prompt, paired-device list (phones first)
   - [x] Step 2: `bluetooth/BluetoothTransport` (host/join, shared FramedStream); A03 Core ↔ S25: 4/4 delivered, RTT about 50 ms
   - [x] Step 3: full voice loop over Bluetooth (A03 Core host ↔ S25, 6/6 delivered, RTT 40–44 ms); CSV `link` + `setup_ms` columns; Bluetooth setup about 3.1 s
   - [x] Step 4: reconnect after a drop, with a "Link lost / Reconnected" banner and `files/links.csv`. S25 ↔ A03 Core: lost, then back automatically (successful attempt 2.5 s). Max distance not measured yet.
-  - [x] Step 5 prep: `scripts/summarize_benchmarks.py` (tables, losses, WER); app also logs SENT so unacked messages count as lost. **Reinstall on both phones before the run.**
-  - [ ] Step 5: 10 sentences over Wi-Fi and Bluetooth, comparison in `BENCHMARKS.md` (also closes Phase 1)
+  - [x] Step 5 prep: `scripts/summarize_benchmarks.py` (tables, losses, WER); app also logs SENT so unacked messages count as lost. Both phones (S25, A03 Core) have this build.
+  - [ ] Step 5 (**on hold**, user will run it later): 10 sentences each way over Wi-Fi and Bluetooth, then `summarize_benchmarks.py --pull`, write up in `BENCHMARKS.md`, and mark Phases 1 and 2 done
 
 ## Rules
 
