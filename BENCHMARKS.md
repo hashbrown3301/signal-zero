@@ -10,7 +10,7 @@
 | OS | Android 16 (API 36) |
 | ABI | arm64-v8a |
 | RAM | 12 GB |
-| Build | debug APK, commit `29eaaca` |
+| Build | debug APK, commit `a55ed40` |
 
 ### Stack
 
@@ -72,7 +72,7 @@ Intel i5-1235U laptop, 2 threads: TTS 243 ms for 2.76 s of audio, STT 787 ms; th
 | Model load (VAD / STT / TTS) | 44 / 608 / 518 ms | 132 / 3447 / 2811 ms |
 
 Link: TCP over the S25's mobile hotspot, host IP `10.242.62.95` (read from `swlan0`, not `192.168.x.1`).
-Build: commit `2afa136`.
+Build: commit `3cc4fc6`.
 
 ### Results
 
