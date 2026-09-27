@@ -5,12 +5,19 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 ## Phase status
 
 - [x] **Phase 0: offline voice loop** (done 2026-09-26). Hold to talk → Silero VAD → IndicConformer Hindi STT → transcript on screen → Piper Hindi TTS playback, with VAD/STT/TTS/total timings on screen. About 1.2 s total for a 20-word sentence on a Galaxy S25. See `BENCHMARKS.md`.
-- [ ] **Phase 1: two phones, text over Wi-Fi.** Working end to end; the **exit test is still pending**. Plan: `docs/PHASE1_PLAN.md`.
+- [ ] **Phase 1: two phones, text over Wi-Fi.** Working end to end; the **exit test is on hold** and will run together with Phase 2 step 5. Plan: `docs/PHASE1_PLAN.md`.
   - [x] Steps 1–6: PacketCodec, TcpTransport, PC fake peer, SessionManager, Host/Join/Solo UI, RTT + end-to-end latency
   - [x] Preliminary S25 ↔ Galaxy M21 run over the S25 hotspot: 4/4 delivered, RTT 49–68 ms (see `BENCHMARKS.md`)
-  - [ ] Step 7 exit test: 10 sentences each way (`docs/phase1_sentences.md`), then pull both `benchmarks.csv` files and finish the write-up
+  - [ ] Step 7 exit test (**on hold**): 10 sentences each way (`docs/phase1_sentences.md`), then pull both `benchmarks.csv` files and finish the write-up. A free 9-message conversation on 2026-09-27 went 9/9 but isn't the scripted run.
   - [x] Host card labels IPs as hotspot vs Wi-Fi (via Android's joined-Wi-Fi interfaces) and shows the hotspot first
   - [x] Both phones run the current build (`013d50a`)
+- [ ] **Phase 2: Bluetooth transport (RFCOMM).** Plan: `docs/PHASE2_PLAN.md`. Don't change `PacketCodec`, `SessionManager` or the speech code.
+  - [x] Step 0: plan doc; framing extracted into `comm/FramedStream.kt` (shared by TCP and Bluetooth)
+  - [ ] Step 1: permissions (`BLUETOOTH_CONNECT` only), "Bluetooth off" prompt, paired-device list
+  - [ ] Step 2: `BluetoothTransport` (host/join, PING/PONG between two phones)
+  - [ ] Step 3: Wi-Fi/Bluetooth toggle, full voice loop over Bluetooth
+  - [ ] Step 4: reconnect after going out of range
+  - [ ] Step 5: 10 sentences over Wi-Fi and Bluetooth, comparison in `BENCHMARKS.md` (also closes Phase 1)
 
 ## Rules
 
@@ -26,7 +33,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - `ui/`: `MainScreen.kt` (router), `HomeScreen.kt` (Host/Join/Solo), `SessionScreen.kt` (chat + timings)
   - `audio/AudioRecorder.kt`: 16 kHz mono capture
   - `speech/VadTrimmer.kt`, `SttEngine.kt`, `TtsEngine.kt`, `AssetCopier.kt`: sherpa-onnx wrappers
-  - `comm/`: `Packet`, `PacketCodec` (17 B overhead + CRC32), `Transport`, `TcpTransport`, `LocalAddresses` (plain Kotlin, no Android)
+  - `comm/`: `Packet`, `PacketCodec` (17 B overhead + CRC32), `FramedStream` (shared framing), `Transport`, `TcpTransport`, `LocalAddresses` (plain Kotlin, no Android)
   - `session/SessionManager.kt`: the only place speech meets the network (queue while talking, ACKs, PING/RTT)
 - `app/src/test/`: JUnit for codec, TCP transport and SessionManager (`gradlew testDebugUnitTest`, runs on the PC)
 - `scripts/fetch_models.py`: downloads the sherpa-onnx AAR and all models, and patches the STT model with sherpa-onnx metadata
