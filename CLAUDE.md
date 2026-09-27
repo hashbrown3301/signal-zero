@@ -19,6 +19,9 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Step 4: reconnect after a drop, with a "Link lost / Reconnected" banner and `files/links.csv`. S25 ↔ A03 Core: lost, then back automatically (successful attempt 2.5 s). Max distance not measured yet.
   - [x] Step 5 prep: `scripts/summarize_benchmarks.py` (tables, losses, WER); app also logs SENT so unacked messages count as lost. Both phones (S25, A03 Core) have this build.
   - [ ] Step 5 (**on hold**, user will run it later): 10 sentences each way over Wi-Fi and Bluetooth, then `summarize_benchmarks.py --pull`, write up in `BENCHMARKS.md`, and mark Phases 1 and 2 done
+- [ ] **Phase 3: all 10 SIH languages** (hi en mr gu bn ta te kn ml or). Plan: `docs/PHASE3_PLAN.md`; models: `docs/MODELS.md`. Mixed languages are **not** translation: the receiver hears the sender's language.
+  - [x] Step 1: availability audit. All 9 IndicConformer models exist (MIT, unique files, correct scripts); TTS via Piper (hi, en, ml), Mimic3/Coqui (gu, bn), and MMS converted by us from `facebook/mms-tts-*` (mr, ta, te, kn, or). Don't use `sriram09764/itantra-tts-onnx`.
+  - [ ] Step 2: data-driven fetch/patch script + MMS conversion → `dist/packs/<lang>/` with `pack.json`
 
 ## Rules
 
