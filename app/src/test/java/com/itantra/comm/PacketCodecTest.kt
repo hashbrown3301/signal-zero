@@ -119,6 +119,43 @@ class PacketCodecTest {
         assertEquals(bytes.size, PacketCodec.frameLength(bytes.copyOf(PacketCodec.HEADER_SIZE)))
     }
 
+    @Test
+    fun languageCodesAreFixed() {
+        // Never renumber: phones with different app versions must agree (docs/PHASE3_PLAN.md).
+        val expected = listOf("hi", "en", "mr", "gu", "bn", "ta", "te", "kn", "ml", "or")
+        assertEquals(expected, Language.entries.sortedBy { it.code }.map { it.iso })
+        assertEquals((1..10).toList(), Language.entries.map { it.code }.sorted())
+        assertEquals(Language.TAMIL, Language.fromIso("ta"))
+    }
+
+    @Test
+    fun everyLanguageRoundTrips() {
+        val samples = mapOf(
+            Language.ENGLISH to "Hello, how are you?", Language.TAMIL to "வணக்கம், நீங்கள் எப்படி இருக்கிறீர்கள்?",
+            Language.ODIA to "ନମସ୍କାର", Language.MALAYALAM to "നമസ്കാരം",
+        )
+        for (lang in Language.entries) {
+            val text = samples[lang] ?: "नमस्ते"
+            val decoded = roundTrip(Packet.text(seq = lang.code, timestamp = 0, text = text, language = lang))
+            assertEquals(lang, decoded.language)
+            assertEquals(lang.code, decoded.langCode)
+            assertEquals(text, decoded.text)
+        }
+    }
+
+    @Test
+    fun unknownLanguageCodeStillDecodes() {
+        // A newer peer may send a language this build doesn't know; that must not look like a corrupt packet.
+        val future = Packet(PacketType.TEXT, seq = 3, langCode = 42, timestamp = 0, payload = "?".encodeToByteArray())
+        val decoded = roundTrip(future)
+        assertEquals(42, decoded.langCode)
+        assertEquals(null, decoded.language)
+        assertEquals("?", decoded.text)
+        // ACK and PONG echo the code they answer, even if unknown.
+        assertEquals(42, roundTrip(Packet.ack(of = decoded, ttsMs = 1, queueMs = 0)).langCode)
+        assertEquals(42, roundTrip(Packet.pong(of = decoded)).langCode)
+    }
+
     /** Same bytes as `scripts/fake_peer.py --selftest`, so the Kotlin and Python codecs agree. */
     @Test
     fun matchesPythonFakePeerBytes() {

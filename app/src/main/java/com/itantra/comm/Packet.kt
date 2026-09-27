@@ -8,12 +8,17 @@ enum class PacketType(val code: Int) {
     }
 }
 
-/** Language of a TEXT packet, so the receiver can pick a matching voice. */
-enum class Language(val code: Int) {
-    HINDI(1);
+/**
+ * Language of a TEXT packet, so the receiver can pick a matching voice. The wire [code]s are fixed forever
+ * (docs/PHASE3_PLAN.md); [iso] matches the pack ids (`ta-speak`, `ta-listen`, …).
+ */
+enum class Language(val code: Int, val iso: String) {
+    HINDI(1, "hi"), ENGLISH(2, "en"), MARATHI(3, "mr"), GUJARATI(4, "gu"), BENGALI(5, "bn"),
+    TAMIL(6, "ta"), TELUGU(7, "te"), KANNADA(8, "kn"), MALAYALAM(9, "ml"), ODIA(10, "or");
 
     companion object {
         fun fromCode(code: Int): Language? = entries.firstOrNull { it.code == code }
+        fun fromIso(iso: String): Language? = entries.firstOrNull { it.iso == iso }
     }
 }
 
@@ -21,16 +26,26 @@ enum class Language(val code: Int) {
  * One message on the wire. [seq] is 16-bit and [timestamp] is 32-bit (sender-clock ms);
  * both are masked to their wire width on creation. ACK and PONG echo the [seq] and
  * [timestamp] of the packet they answer.
+ *
+ * [langCode] is kept as a raw byte so a packet in a language this build doesn't know (a newer peer)
+ * still decodes: [language] is then null and the receiver shows the text instead of dropping the link.
  */
 class Packet(
     val type: PacketType,
     seq: Int,
-    val language: Language,
+    langCode: Int,
     timestamp: Long,
     val payload: ByteArray = ByteArray(0),
 ) {
+    constructor(type: PacketType, seq: Int, language: Language, timestamp: Long, payload: ByteArray = ByteArray(0)) :
+        this(type, seq, language.code, timestamp, payload)
+
     val seq: Int = seq and 0xFFFF
+    val langCode: Int = langCode and 0xFF
     val timestamp: Long = timestamp and 0xFFFF_FFFFL
+
+    /** null if [langCode] is unknown to this build. */
+    val language: Language? get() = Language.fromCode(langCode)
 
     init {
         require(payload.size <= PacketCodec.MAX_PAYLOAD) {
@@ -55,14 +70,14 @@ class Packet(
     }
 
     override fun equals(other: Any?): Boolean =
-        other is Packet && type == other.type && seq == other.seq && language == other.language &&
+        other is Packet && type == other.type && seq == other.seq && langCode == other.langCode &&
             timestamp == other.timestamp && payload.contentEquals(other.payload)
 
     override fun hashCode(): Int =
-        listOf(type, seq, language, timestamp, payload.contentHashCode()).hashCode()
+        listOf(type, seq, langCode, timestamp, payload.contentHashCode()).hashCode()
 
     override fun toString(): String =
-        "Packet($type seq=$seq lang=$language ts=$timestamp payload=${payload.size} B)"
+        "Packet($type seq=$seq lang=${language ?: "unknown($langCode)"} ts=$timestamp payload=${payload.size} B)"
 
     companion object {
         const val ACK_PAYLOAD_SIZE = 8
@@ -74,12 +89,12 @@ class Packet(
             val body = ByteArray(ACK_PAYLOAD_SIZE)
             writeUInt32(body, 0, ttsMs)
             writeUInt32(body, 4, queueMs)
-            return Packet(PacketType.ACK, of.seq, of.language, of.timestamp, body)
+            return Packet(PacketType.ACK, of.seq, of.langCode, of.timestamp, body)
         }
 
         fun ping(seq: Int, timestamp: Long) = Packet(PacketType.PING, seq, Language.HINDI, timestamp)
 
-        fun pong(of: Packet) = Packet(PacketType.PONG, of.seq, of.language, of.timestamp)
+        fun pong(of: Packet) = Packet(PacketType.PONG, of.seq, of.langCode, of.timestamp)
 
         private fun writeUInt32(dst: ByteArray, offset: Int, value: Long) {
             val v = value.coerceIn(0, 0xFFFF_FFFFL)

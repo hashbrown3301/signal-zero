@@ -30,7 +30,7 @@ object PacketCodec {
         buf.put(MAGIC_0).put(MAGIC_1).put(VERSION.toByte())
         buf.put(packet.type.code.toByte())
         buf.putShort(packet.seq.toShort())
-        buf.put(packet.language.code.toByte())
+        buf.put(packet.langCode.toByte())
         buf.putInt(packet.timestamp.toInt())
         buf.putShort(packet.payload.size.toShort())
         buf.put(packet.payload)
@@ -67,7 +67,7 @@ object PacketCodec {
         val type = PacketType.fromCode(typeCode) ?: throw PacketException("Unknown type $typeCode")
         val seq = buf.getShort().toInt() and 0xFFFF
         val langCode = buf.get().toInt() and 0xFF
-        val language = Language.fromCode(langCode) ?: throw PacketException("Unknown language $langCode")
+        // An unknown language code is not an error: the packet is valid, this build just lacks that language.
         val timestamp = buf.getInt().toLong() and 0xFFFF_FFFFL
         val length = buf.getShort().toInt() and 0xFFFF
         val payload = ByteArray(length).also { buf.get(it) }
@@ -75,6 +75,6 @@ object PacketCodec {
         if (type == PacketType.ACK && length != Packet.ACK_PAYLOAD_SIZE) {
             throw PacketException("ACK payload must be ${Packet.ACK_PAYLOAD_SIZE} B, got $length B")
         }
-        return Packet(type, seq, language, timestamp, payload)
+        return Packet(type, seq, langCode, timestamp, payload)
     }
 }
