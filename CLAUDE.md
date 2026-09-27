@@ -24,7 +24,8 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Step 2: `scripts/packs/` (build_pack, export_mms, smoke_test, make_index, `languages.json`) + `.github/workflows/build-packs.yml` → **draft** release `packs-v1`. Lightweight: speak pack = STT (≈138 MB), listen pack = int8 voice (≈18–40 MB, Piper reuses the app's espeak-ng-data). All 20 packs (10 languages × speak/listen) are in the draft release `packs-v1`. Sizes: Indic speak 137.7 MB, `en-speak` 46.4 MB, MMS listen 38.0 MB, Piper int8 listen 18.3–18.6 MB (hi, en, ml). Round trips: ta 2.9% CER, bn 0.0%, en 7.1%.
   - [x] Step 3: real-speech verification in CI (`verify-packs.yml`, `pack-experiments.yml`; FLEURS clips). CER 1–6% for hi te kn bn mr; see `docs/MODELS.md`. Decisions: MMS voices as **fp16 weights** (57.6 MB, RTF 0.27 vs int8's 1.0–1.3), English STT conformer-small, Malayalam voice → MMS, English voice → Piper `ljspeech` (public domain; `lessac` is research-only). User listened: all voices clear.
   - [x] Step 3 wrap-up: the 9 changed listen packs rebuilt and smoke-tested (MMS fp16 57.6–57.7 MB, en ljspeech 19.4 MB)
-  - [ ] Step 4: language codes in PacketCodec (+ unknown-language handling), pack manager (install from file, SHA-256, delete), per-CPU APKs
+  - [x] Step 4: language codes 1–10 in `Packet` (unknown codes decode instead of dropping the link); `packs/` pack manager (`PackStore`: zip install with SHA-256 + zip-slip checks, atomic replace; `PackRepository`: built-in Hindi from `assets/builtin/`, adb sideload folder, file-picker import); "Language packs" screen; per-CPU APKs (arm64 241.5 MB). S25: Tamil packs installed in about 3 s, damaged copy rejected.
+  - [ ] Step 5: language picker + engine factory driven by `pack.json` (switch hi ↔ ta ↔ en on the S25); measure the built-in Hindi voice format
 
 ## Rules
 
@@ -40,6 +41,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - `ui/`: `MainScreen.kt` (router), `HomeScreen.kt` (Host/Join/Solo), `SessionScreen.kt` (chat + timings)
   - `audio/AudioRecorder.kt`: 16 kHz mono capture
   - `speech/VadTrimmer.kt`, `SttEngine.kt`, `TtsEngine.kt`, `AssetCopier.kt`: sherpa-onnx wrappers
+  - `packs/`: `PackManifest` (pack.json), `PackStore` (install/verify/delete, plain Kotlin), `PackRepository` (Android: built-in, sideload, import)
   - `comm/`: `Packet`, `PacketCodec` (17 B overhead + CRC32), `FramedStream` (shared framing), `Transport`, `TcpTransport`, `LocalAddresses` (plain Kotlin, no Android)
   - `session/SessionManager.kt`: the only place speech meets the network (queue while talking, ACKs, PING/RTT)
 - `app/src/test/`: JUnit for codec, TCP transport and SessionManager (`gradlew testDebugUnitTest`, runs on the PC)
@@ -57,10 +59,11 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 .venv\Scripts\python.exe scripts\fetch_models.py      # one-time: AAR + models
 $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleDebug
-adb install -r app\build\outputs\apk\debug\app-debug.apk
+adb install -r app\build\outputs\apk\debug\app-arm64-v8a-debug.apk   # per-CPU APKs; A03 Core: app-armeabi-v7a-debug.apk
 adb logcat -s iTantra:* AndroidRuntime:E
 adb shell am start -n com.itantra/.MainActivity --es mode host        # or: --es mode join --es peer <ip>
 adb shell run-as com.itantra cat files/benchmarks.csv > benchmarks.csv # pull per-message timings
+adb push ta-listen.zip /sdcard/Android/data/com.itantra/files/incoming/  # sideload a pack (use PowerShell: Git Bash mangles /sdcard paths)
 ```
 
 ## Environment notes

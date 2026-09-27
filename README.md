@@ -38,7 +38,7 @@ python -m venv .venv
 # 3. Build and install on a USB-connected phone (USB debugging on)
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleDebug
-adb install -r app\build\outputs\apk\debug\app-debug.apk
+adb install -r app\build\outputs\apk\debug\app-arm64-v8a-debug.apk   # 32-bit phones: app-armeabi-v7a-debug.apk
 adb shell am start -n com.itantra/.MainActivity
 
 # 4. Logs
@@ -50,7 +50,9 @@ adb logcat -s iTantra:* AndroidRuntime:E
 ## Notes
 
 - A real phone is recommended. The x86_64 emulator is supported, but it needs roughly 16 GB of PC RAM to run alongside Gradle.
-- The debug APK is about 275 MB because the models are bundled as uncompressed assets.
+- The debug APK is about 240 MB per CPU type because the Hindi models are bundled as uncompressed assets.
+- Other languages are installed as packs (Language packs screen → Import pack…, or `adb push <pack>.zip
+  /sdcard/Android/data/com.itantra/files/incoming/`). Packs are built by `.github/workflows/build-packs.yml`.
 
 ## License
 
