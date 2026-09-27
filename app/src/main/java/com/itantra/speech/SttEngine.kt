@@ -9,20 +9,27 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 
 /**
- * Offline Hindi speech-to-text with AI4Bharat IndicConformer (NeMo CTC, int8).
- * The model's sherpa-onnx metadata is added by scripts/fetch_models.py.
+ * Offline speech-to-text with a NeMo CTC model (AI4Bharat IndicConformer, or NeMo English), int8.
+ * Built by [EngineFactory] from a speak pack: [assets] non-null means [model]/[tokens] are asset paths (built-in
+ * pack), null means absolute file paths (installed pack). Metadata comes from scripts/fetch_models.py.
  */
-class SttEngine(assets: AssetManager, numThreads: Int = 4) {
+class SttEngine(
+    assets: AssetManager?,
+    model: String,
+    tokens: String,
+    featureDim: Int = 80,
+    numThreads: Int = 4,
+) {
 
     data class Result(val text: String, val millis: Long)
 
     private val recognizer = OfflineRecognizer(
         assets,
         OfflineRecognizerConfig(
-            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
+            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = featureDim),
             modelConfig = OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(model = "stt/model.int8.onnx"),
-                tokens = "stt/tokens.txt",
+                nemo = OfflineNemoEncDecCtcModelConfig(model = model),
+                tokens = tokens,
                 numThreads = numThreads,
             ),
             decodingMethod = "greedy_search",

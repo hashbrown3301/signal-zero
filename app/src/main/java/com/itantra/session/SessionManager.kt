@@ -1,5 +1,6 @@
 package com.itantra.session
 
+import com.itantra.comm.Language
 import com.itantra.comm.LinkState
 import com.itantra.comm.Packet
 import com.itantra.comm.PacketCodec
@@ -21,7 +22,12 @@ import java.util.concurrent.atomic.AtomicInteger
 
 enum class Direction { OUTGOING, INCOMING, LOCAL }
 
-enum class Status { SENT, ACKED, FAILED, QUEUED, PLAYING, PLAYED }
+enum class Status {
+    SENT, ACKED, FAILED, QUEUED, PLAYING, PLAYED,
+
+    /** Received, but this phone has no voice for the message's language: shown as text only. */
+    NO_VOICE,
+}
 
 data class Message(
     val id: Int,
@@ -46,6 +52,8 @@ data class Message(
     /** OUTGOING: median PING/PONG round trip when the ACK arrived. */
     val rttMs: Long? = null,
     val error: String? = null,
+    /** Packet language code (see comm.Language); null for messages from before Phase 3. */
+    val langCode: Int? = null,
 ) {
     /** One-way network estimate: RTT / 2. */
     val networkMs: Long? get() = rttMs?.let { it / 2 }
@@ -93,6 +101,8 @@ class SessionManager(
     private val speaker: Speaker,
     /** null = Solo mode (Phase 0 loop, no network). */
     private val transport: Transport?,
+    /** The language this phone speaks: tags outgoing messages and picks the Solo voice. */
+    private val language: Language = Language.HINDI,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
     private val minPressMs: Long = 300,
     /** PING period while connected; 0 disables pinging. */
@@ -108,11 +118,14 @@ class SessionManager(
         val messageId: Int
         val text: String
 
+        val langCode: Int
+
         data class Remote(val packet: Packet, override val messageId: Int, val arrivedAt: Long) : Playback {
             override val text get() = packet.text
+            override val langCode get() = packet.langCode
         }
 
-        data class Local(override val messageId: Int, override val text: String) : Playback
+        data class Local(override val messageId: Int, override val text: String, override val langCode: Int) : Playback
     }
 
     private data class Pending(val messageId: Int, val releasedAt: Long)
@@ -229,15 +242,16 @@ class SessionManager(
             speechSec = heard.speechSec,
             vadMs = heard.vadMs,
             sttMs = heard.sttMs,
+            langCode = language.code,
         )
         if (transport == null) {
             addMessage(base.copy(status = Status.QUEUED))
-            playQueue.send(Playback.Local(base.id, heard.text))
+            playQueue.send(Playback.Local(base.id, heard.text, language.code))
             return
         }
 
         val seq = nextSeq++ and 0xFFFF
-        val packet = Packet.text(seq, releasedAt, heard.text)
+        val packet = Packet.text(seq, releasedAt, heard.text, language)
         pending[seq] = Pending(base.id, releasedAt)
         addMessage(base.copy(seq = seq, wireBytes = PacketCodec.OVERHEAD + packet.payload.size))
         try {
@@ -258,6 +272,7 @@ class SessionManager(
                         direction = Direction.INCOMING,
                         text = p.text,
                         status = Status.QUEUED,
+                        langCode = p.langCode,
                         seq = p.seq,
                         wireBytes = PacketCodec.OVERHEAD + p.payload.size,
                     )
@@ -294,11 +309,16 @@ class SessionManager(
             }
             try {
                 val queueMs = (item as? Playback.Remote)?.let { clock() - it.arrivedAt }
-                val prepared = speaker.prepare(item.text)
+                val prepared = speaker.prepare(item.text, item.langCode)
                 if (item is Playback.Remote) {
+                    // Delivered either way; with no voice the text is shown and the ACK reports 0 ms TTS.
                     runCatching {
-                        transport?.send(Packet.ack(of = item.packet, ttsMs = prepared.synthMs, queueMs = queueMs ?: 0))
+                        transport?.send(Packet.ack(of = item.packet, ttsMs = prepared?.synthMs ?: 0, queueMs = queueMs ?: 0))
                     }
+                }
+                if (prepared == null) {
+                    updateMessage(item.messageId) { it.copy(status = Status.NO_VOICE, queueMs = queueMs) }
+                    continue
                 }
                 updateMessage(item.messageId) {
                     it.copy(status = Status.PLAYING, ttsMs = prepared.synthMs, queueMs = queueMs)

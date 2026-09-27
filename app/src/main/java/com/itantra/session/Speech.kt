@@ -21,10 +21,13 @@ interface Listener {
     fun cancel()
 }
 
-/** Text → audio out. */
+/** Text → audio out, in the language of the message. */
 interface Speaker {
-    /** Synthesizes [text]; the result is played separately so the ACK can go out first. */
-    suspend fun prepare(text: String): Prepared
+    /**
+     * Synthesizes [text] with the voice for [langCode] (comm.Language code); the result is played separately so
+     * the ACK can go out first. Returns null if this phone has no voice for that language.
+     */
+    suspend fun prepare(text: String, langCode: Int): Prepared?
 }
 
 interface Prepared {

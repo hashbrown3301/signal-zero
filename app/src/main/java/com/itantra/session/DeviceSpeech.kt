@@ -36,9 +36,10 @@ class DeviceListener(
     }
 }
 
-/** [Speaker] backed by the Piper Hindi voice. */
-class DeviceSpeaker(private val tts: TtsEngine) : Speaker {
-    override suspend fun prepare(text: String): Prepared {
+/** [Speaker] backed by the installed voices; [voiceFor] returns the voice for a language code, or null. */
+class DeviceSpeaker(private val voiceFor: suspend (Int) -> TtsEngine?) : Speaker {
+    override suspend fun prepare(text: String, langCode: Int): Prepared? {
+        val tts = voiceFor(langCode) ?: return null
         val audio = withContext(Dispatchers.Default) { tts.synthesize(text) }
         return object : Prepared {
             override val synthMs = audio.millis

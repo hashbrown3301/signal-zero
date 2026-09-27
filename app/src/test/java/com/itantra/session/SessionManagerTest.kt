@@ -1,5 +1,6 @@
 package com.itantra.session
 
+import com.itantra.comm.Language
 import com.itantra.comm.LinkState
 import com.itantra.comm.Packet
 import com.itantra.comm.PacketType
@@ -45,15 +46,20 @@ class SessionManagerTest {
         override fun cancel() = Unit
     }
 
-    private class FakeSpeaker(private val synthMs: Long = 50, private val playMs: Long = 200) : Speaker {
+    private class FakeSpeaker(
+        private val synthMs: Long = 50,
+        private val playMs: Long = 200,
+        private val voices: Set<Int> = setOf(Language.HINDI.code),
+    ) : Speaker {
         val played: MutableList<String> = Collections.synchronizedList(mutableListOf())
-        override suspend fun prepare(text: String) = object : Prepared {
-            override val synthMs = this@FakeSpeaker.synthMs
-            override suspend fun play() {
-                delay(playMs)
-                played += text
+        override suspend fun prepare(text: String, langCode: Int): Prepared? =
+            if (langCode !in voices) null else object : Prepared {
+                override val synthMs = this@FakeSpeaker.synthMs
+                override suspend fun play() {
+                    delay(playMs)
+                    played += text
+                }
             }
-        }
     }
 
     private fun test(block: suspend () -> Unit) = runBlocking { withTimeout(10_000) { block() } }
@@ -63,10 +69,11 @@ class SessionManagerTest {
         listener: Listener = FakeListener(hindi),
         speaker: Speaker = FakeSpeaker(),
         pingIntervalMs: Long = 0,
+        language: Language = Language.HINDI,
     ): Pair<SessionManager, Transport> {
         val host = TcpTransport.host(port = 0)
         val port = (host.state.first { it is LinkState.Listening } as LinkState.Listening).port!!
-        val sm = SessionManager(scope, listener, speaker, host, minPressMs = 0, pingIntervalMs = pingIntervalMs)
+        val sm = SessionManager(scope, listener, speaker, host, language = language, minPressMs = 0, pingIntervalMs = pingIntervalMs)
             .also { it.start() }
         val peer = TcpTransport.join("127.0.0.1", port)
         closeables += { sm.close() }
@@ -268,5 +275,44 @@ class SessionManagerTest {
         assertNull(sm.state.value.rttMs)
         assertNull(m.endToEndMs)
         assertEquals(10L, m.peerTtsMs)
+    }
+
+    @Test
+    fun outgoingSpeechIsTaggedWithThePhonesLanguage() = test {
+        val tamil = "வணக்கம், நீங்கள் எப்படி இருக்கிறீர்கள்?"
+        val (sm, peer) = session(listener = FakeListener(tamil), language = Language.TAMIL)
+        sm.talk()
+        val text = peer.incoming.first { it.type == PacketType.TEXT }
+        assertEquals(Language.TAMIL, text.language)
+        assertEquals(tamil, text.text)
+        assertEquals(Language.TAMIL.code, sm.state.value.messages.single().langCode)
+    }
+
+    @Test
+    fun incomingLanguageWithoutVoiceIsShownAsTextAndStillAcked() = test {
+        val speaker = FakeSpeaker(voices = setOf(Language.HINDI.code))
+        val (sm, peer) = session(speaker = speaker)
+        peer.send(Packet.text(4, 0, "வணக்கம்", Language.TAMIL))
+        val ack = peer.incoming.first { it.type == PacketType.ACK }
+        assertEquals(4, ack.seq)
+        assertEquals(0L, ack.ackTtsMs)
+        val m = sm.state.first { it.messages.singleOrNull()?.status == Status.NO_VOICE }.messages.single()
+        assertEquals(Language.TAMIL.code, m.langCode)
+        assertTrue(speaker.played.isEmpty())
+        // The queue keeps working afterwards: a Hindi message is still spoken.
+        peer.send(Packet.text(5, 0, hindi, Language.HINDI))
+        sm.state.first { s -> s.messages.any { it.status == Status.PLAYED } }
+        assertEquals(listOf(hindi), speaker.played.toList())
+    }
+
+    @Test
+    fun soloSpeaksWithTheVoiceOfThePhonesLanguage() = test {
+        val speaker = FakeSpeaker(voices = setOf(Language.TAMIL.code))
+        val sm = SessionManager(scope, FakeListener("வணக்கம்"), speaker, transport = null, language = Language.TAMIL,
+            minPressMs = 0).also { it.start() }
+        closeables += { sm.close() }
+        sm.talk()
+        sm.state.first { it.messages.singleOrNull()?.status == Status.PLAYED }
+        assertEquals(listOf("வணக்கம்"), speaker.played.toList())
     }
 }

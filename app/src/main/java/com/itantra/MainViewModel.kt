@@ -31,7 +31,6 @@ import com.itantra.session.Status
 import com.itantra.speech.SttEngine
 import com.itantra.speech.TtsEngine
 import com.itantra.speech.VadTrimmer
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,6 +39,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.flow.first
+import com.itantra.speech.EngineFactory
+import com.itantra.comm.Language
 import kotlinx.coroutines.withContext
 
 /**
@@ -53,6 +57,16 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     enum class Mode { SOLO, HOST, JOIN }
 
     enum class Link { WIFI, BLUETOOTH }
+
+    /** A language the phone knows about (from built-in and installed packs). */
+    data class LanguageOption(
+        val iso: String,
+        val name: String,
+        val native: String,
+        val code: Int,
+        val hasSpeak: Boolean,
+        val hasListen: Boolean,
+    )
 
     data class PacksUi(
         val builtIn: List<PackManifest> = emptyList(),
@@ -87,6 +101,11 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         /** When the link last came back after a drop, and how long it had been down. */
         val reconnectedAt: Long? = null,
         val lastOutageMs: Long? = null,
+        /** The language this phone speaks (ISO code of its speak pack), and which languages are installed. */
+        val myLanguage: String = "hi",
+        val languages: List<LanguageOption> = emptyList(),
+        /** Language whose models are loading right now (switching languages), or null. */
+        val loadingLanguage: String? = null,
         /** The "Language packs" screen is open (on top of the start screen). */
         val showPacks: Boolean = false,
         val packs: PacksUi = PacksUi(),
@@ -98,27 +117,27 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         UiState(
             lastPeer = prefs.getString(KEY_LAST_PEER, "").orEmpty(),
             lastBtAddress = prefs.getString(KEY_LAST_BT, "").orEmpty(),
+            myLanguage = prefs.getString(KEY_MY_LANGUAGE, "hi") ?: "hi",
         )
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
-    private val enginesReady = CompletableDeferred<Unit>()
+    private val factory by lazy { EngineFactory(getApplication()) }
+    private val packRepo by lazy { PackRepository(getApplication()) }
+    private val engineLock = Mutex()
     private var vad: VadTrimmer? = null
     private var stt: SttEngine? = null
-    private var tts: TtsEngine? = null
+    /** Loaded voices by packet language code. Step 5: only this phone's own language (step 6 adds lazy loading). */
+    private val voices = mutableMapOf<Int, TtsEngine>()
     private var session: SessionManager? = null
     private var sessionJob: Job? = null
 
     init {
         viewModelScope.launch {
-            try {
-                withContext(Dispatchers.Default) { loadEngines() }
-                enginesReady.complete(Unit)
-                _state.update { it.copy(modelsReady = true) }
-            } catch (e: Exception) {
-                Log.e(TAG, "Could not load models", e)
-                _state.update { it.copy(error = "Could not load models: ${e.message}") }
-            }
+            refreshLanguages()
+            val saved = _state.value.myLanguage
+            val usable = _state.value.languages.any { it.iso == saved && it.hasSpeak }
+            loadLanguage(if (usable) saved else "hi")
         }
         val link = if (handle.get<String>("link")?.lowercase() == "bt") Link.BLUETOOTH else Link.WIFI
         when (handle.get<String>("mode")?.lowercase()) {
@@ -131,17 +150,63 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         }
     }
 
-    private fun loadEngines() {
-        val context = getApplication<Application>()
-        var t = SystemClock.elapsedRealtime()
-        vad = VadTrimmer(context.assets)
-        Log.i(TAG, "VAD loaded in ${SystemClock.elapsedRealtime() - t} ms")
-        t = SystemClock.elapsedRealtime()
-        stt = SttEngine(context.assets)
-        Log.i(TAG, "STT loaded in ${SystemClock.elapsedRealtime() - t} ms")
-        t = SystemClock.elapsedRealtime()
-        tts = TtsEngine(context)
-        Log.i(TAG, "TTS loaded in ${SystemClock.elapsedRealtime() - t} ms")
+    /** Rebuilds the language list from built-in + installed packs. */
+    private suspend fun refreshLanguages() {
+        val packs = withContext(Dispatchers.IO) { packRepo.builtIn() + packRepo.installed() }
+        val options = packs.groupBy { it.lang }.map { (iso, list) ->
+            val first = list.first()
+            LanguageOption(iso, first.name, first.native, first.packetCode,
+                hasSpeak = list.any { it.isSpeak }, hasListen = list.any { it.isListen })
+        }.sortedBy { it.code }
+        _state.update { it.copy(languages = options) }
+    }
+
+    /**
+     * Makes [iso] this phone's language: releases the current STT and voice, then loads that language's speak pack
+     * and (if installed) listen pack. Only one STT is ever in memory (docs/PHASE3_PLAN.md).
+     */
+    fun selectLanguage(iso: String) {
+        if (_state.value.mode != null || _state.value.loadingLanguage != null) return
+        if (iso == _state.value.myLanguage && _state.value.modelsReady) return
+        viewModelScope.launch { loadLanguage(iso) }
+    }
+
+    private suspend fun loadLanguage(iso: String) {
+        _state.update { it.copy(loadingLanguage = iso, modelsReady = false, error = null) }
+        try {
+            val took = withContext(Dispatchers.Default) {
+                engineLock.withLock {
+                    val start = SystemClock.elapsedRealtime()
+                    val context = getApplication<Application>()
+                    if (vad == null) {
+                        vad = VadTrimmer(context.assets)
+                        Log.i(TAG, "VAD loaded in ${SystemClock.elapsedRealtime() - start} ms")
+                    }
+                    stt?.release()
+                    stt = null
+                    voices.values.forEach { it.release() }
+                    voices.clear()
+
+                    var t = SystemClock.elapsedRealtime()
+                    val speak = packRepo.find(iso, PackManifest.KIND_SPEAK) ?: error("No speak pack installed for $iso")
+                    stt = factory.stt(speak)
+                    Log.i(TAG, "STT ${speak.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
+                    packRepo.find(iso, PackManifest.KIND_LISTEN)?.let { listen ->
+                        t = SystemClock.elapsedRealtime()
+                        voices[listen.manifest.packetCode] = factory.tts(listen)
+                        Log.i(TAG, "TTS ${listen.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
+                    }
+                    SystemClock.elapsedRealtime() - start
+                }
+            }
+            Log.i(TAG, "language $iso ready in $took ms")
+            prefs.edit().putString(KEY_MY_LANGUAGE, iso).apply()
+            _state.update { it.copy(myLanguage = iso, modelsReady = true, loadingLanguage = null) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not load language $iso", e)
+            _state.update { it.copy(loadingLanguage = null, error = "Could not load $iso: ${e.message}") }
+            if (iso != "hi") loadLanguage("hi")  // fall back to the built-in language
+        }
     }
 
     /**
@@ -165,7 +230,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             )
         }
         sessionJob = viewModelScope.launch {
-            enginesReady.await()
+            _state.first { it.modelsReady }
             val transport = try {
                 when {
                     mode == Mode.SOLO -> null
@@ -185,11 +250,13 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             }
             Log.i(TAG, "Session mode $mode over ${if (bt) "Bluetooth" else "Wi-Fi"}" +
                 if (mode == Mode.JOIN) " → $peerName ($peerId)" else "")
+            val language = Language.fromIso(_state.value.myLanguage) ?: Language.HINDI
             val sm = SessionManager(
                 this,
                 DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt)),
-                DeviceSpeaker(checkNotNull(tts)),
+                DeviceSpeaker { code -> engineLock.withLock { voices[code] } },
                 transport,
+                language = language,
                 clock = SystemClock::elapsedRealtime,
             )
             session = sm
@@ -312,7 +379,6 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     // ---------- language packs ----------
 
-    private val packRepo by lazy { PackRepository(getApplication()) }
 
     fun openPacks() {
         _state.update { it.copy(showPacks = true, packs = it.packs.copy(message = null)) }
@@ -352,6 +418,9 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val (builtIn, installed, incoming) = withContext(Dispatchers.IO) {
                 Triple(packRepo.builtIn(), packRepo.installed(), packRepo.incomingDir?.absolutePath.orEmpty())
             }
+            refreshLanguages()
+            val mine = _state.value.myLanguage
+            if (_state.value.languages.none { it.iso == mine && it.hasSpeak }) loadLanguage("hi")
             _state.update {
                 it.copy(
                     packs = PacksUi(builtIn, installed, busy = false, message = message ?: it.packs.message,
@@ -393,13 +462,14 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         leaveSession()
         vad?.release()
         stt?.release()
-        tts?.release()
+        voices.values.forEach { it.release() }
     }
 
     private companion object {
         const val TAG = "iTantra"
         const val KEY_LAST_PEER = "last_peer"
         const val KEY_LAST_BT = "last_bt_address"
+        const val KEY_MY_LANGUAGE = "my_language"
         // SENT is logged too, so a message that never gets an ACK (a loss) still leaves a row.
         val LOGGED_STATUSES = setOf(Status.SENT, Status.ACKED, Status.FAILED, Status.PLAYED)
     }

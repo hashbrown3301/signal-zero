@@ -1,6 +1,6 @@
 package com.itantra.speech
 
-import android.content.Context
+import android.content.res.AssetManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -11,37 +11,26 @@ import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import kotlinx.coroutines.delay
 
-/** Offline Hindi text-to-speech with a Piper VITS voice, plus simple speaker playback. */
-class TtsEngine(context: Context, numThreads: Int = 4) {
+/**
+ * Offline text-to-speech with a VITS voice (Piper or MMS), plus simple speaker playback.
+ * Built by [EngineFactory] from a pack: [assets] non-null means [model]/[tokens] are asset paths (built-in pack),
+ * null means absolute file paths (installed pack). [dataDir] is espeak-ng-data for Piper, empty for MMS.
+ */
+class TtsEngine(assets: AssetManager?, model: String, tokens: String, dataDir: String, numThreads: Int = 4) {
 
     class Audio(val samples: FloatArray, val sampleRate: Int, val millis: Long) {
         val seconds: Float get() = samples.size / sampleRate.toFloat()
     }
 
-    /** How long the one-time espeak-ng-data copy took (0 when already present). */
-    val dataCopyMillis: Long
-
-    private val tts: OfflineTts
-
-    init {
-        val start = SystemClock.elapsedRealtime()
-        val dataDir = AssetCopier.copyDir(context, "tts/espeak-ng-data")
-        dataCopyMillis = SystemClock.elapsedRealtime() - start
-
-        tts = OfflineTts(
-            context.assets,
-            OfflineTtsConfig(
-                model = OfflineTtsModelConfig(
-                    vits = OfflineTtsVitsModelConfig(
-                        model = "tts/$VOICE.onnx",
-                        tokens = "tts/tokens.txt",
-                        dataDir = dataDir.absolutePath,
-                    ),
-                    numThreads = numThreads,
-                ),
+    private val tts = OfflineTts(
+        assets,
+        OfflineTtsConfig(
+            model = OfflineTtsModelConfig(
+                vits = OfflineTtsVitsModelConfig(model = model, tokens = tokens, dataDir = dataDir),
+                numThreads = numThreads,
             ),
-        )
-    }
+        ),
+    )
 
     fun synthesize(text: String, speed: Float = 1.0f): Audio {
         val start = SystemClock.elapsedRealtime()
@@ -85,7 +74,4 @@ class TtsEngine(context: Context, numThreads: Int = 4) {
 
     fun release() = tts.release()
 
-    private companion object {
-        const val VOICE = "hi_IN-priyamvada-medium"
-    }
 }

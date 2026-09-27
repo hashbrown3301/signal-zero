@@ -52,6 +52,7 @@ import com.itantra.MainViewModel.Mode
 import com.itantra.comm.AddressKind
 import com.itantra.bluetooth.BtAvailability
 import com.itantra.bluetooth.rememberBluetoothState
+import com.itantra.comm.Language
 import com.itantra.comm.LinkState
 import com.itantra.session.Direction
 import com.itantra.session.Message
@@ -122,7 +123,7 @@ fun SessionScreen(
                     )
                 }
             }
-            items(session.messages, key = { it.id }) { MessageBubble(it) }
+            items(session.messages, key = { it.id }) { MessageBubble(it, ui.myLanguage) }
         }
 
         val btOff = ui.link == Link.BLUETOOTH && ui.mode != Mode.SOLO &&
@@ -291,7 +292,7 @@ private fun HostAddressCard(ui: MainViewModel.UiState) {
 }
 
 @Composable
-private fun MessageBubble(m: Message) {
+private fun MessageBubble(m: Message, myLanguage: String) {
     val mine = m.direction != Direction.INCOMING
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = if (mine) Alignment.CenterEnd else Alignment.CenterStart) {
         Column(
@@ -305,6 +306,14 @@ private fun MessageBubble(m: Message) {
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            val lang = m.langCode?.let { Language.fromCode(it) }
+            if (m.langCode != null && lang?.iso != myLanguage) {
+                Text(
+                    lang?.name ?: "Unknown language (code ${m.langCode})",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             Text(m.text, fontSize = 20.sp, lineHeight = 28.sp)
             m.endToEndMs?.let {
                 Text("end-to-end $it ms", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
@@ -324,6 +333,7 @@ private fun detailLines(m: Message): List<String> {
         Status.QUEUED -> "queued"
         Status.PLAYING -> "▶ playing"
         Status.PLAYED -> "played"
+        Status.NO_VOICE -> "text only: no ${m.langCode?.let { Language.fromCode(it)?.name } ?: "matching"} voice installed"
     }
     val lines = mutableListOf(status)
     val bytes = m.wireBytes

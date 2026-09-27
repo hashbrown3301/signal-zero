@@ -8,6 +8,10 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.remember
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,7 +54,12 @@ import com.itantra.bluetooth.rememberBluetoothState
 import com.itantra.comm.isValidIpv4
 
 @Composable
-fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String, Link, String) -> Unit, onOpenPacks: () -> Unit) {
+fun HomeScreen(
+    ui: MainViewModel.UiState,
+    onStart: (Mode, String, Link, String) -> Unit,
+    onOpenPacks: () -> Unit,
+    onSelectLanguage: (String) -> Unit,
+) {
     var peer by rememberSaveable(ui.lastPeer) { mutableStateOf(ui.lastPeer) }
     val peerValid = isValidIpv4(peer)
     var useBluetooth by rememberSaveable { mutableStateOf(false) }
@@ -67,12 +76,15 @@ fun HomeScreen(ui: MainViewModel.UiState, onStart: (Mode, String, Link, String) 
         Text(
             when {
                 ui.error != null -> ui.error
-                ui.modelsReady -> "Models ready · offline Hindi voice"
+                ui.loadingLanguage != null ->
+                    "Loading ${ui.languages.firstOrNull { it.iso == ui.loadingLanguage }?.name ?: ui.loadingLanguage}…"
+                ui.modelsReady -> "Models ready · offline"
                 else -> "Loading models…"
             },
             color = if (ui.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        LanguagePicker(ui, onSelectLanguage)
         OutlinedButton(onClick = onOpenPacks, modifier = Modifier.fillMaxWidth()) { Text("Language packs") }
 
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -241,6 +253,53 @@ private fun BluetoothSection(lastBtAddress: String, onStart: (Mode, String, Link
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(host?.let { "Join ${it.name} (Bluetooth)" } ?: "Join (Bluetooth)") }
             }
+        }
+    }
+}
+
+/** "I speak …": languages with an installed speak pack can be chosen; the rest point to Language packs. */
+@Composable
+private fun LanguagePicker(ui: MainViewModel.UiState, onSelect: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val mine = ui.languages.firstOrNull { it.iso == ui.myLanguage }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("I speak", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Box {
+                OutlinedButton(
+                    onClick = { open = true },
+                    enabled = ui.loadingLanguage == null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(mine?.let { "${it.native} · ${it.name}" + if (!it.hasListen) " (no voice installed)" else "" } ?: ui.myLanguage)
+                    Text("  ▾")
+                }
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    for (lang in ui.languages) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "${lang.native} · ${lang.name}" + when {
+                                        !lang.hasSpeak -> " (install its speak pack first)"
+                                        !lang.hasListen -> " (no voice)"
+                                        else -> ""
+                                    }
+                                )
+                            },
+                            enabled = lang.hasSpeak,
+                            onClick = {
+                                open = false
+                                onSelect(lang.iso)
+                            },
+                        )
+                    }
+                }
+            }
+            Text(
+                "Your speech is recognized in this language. Other people hear it in this language too; nothing is translated.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -21,7 +21,12 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             onDelete = viewModel::deletePack,
         )
     } else if (ui.mode == null) {
-        HomeScreen(ui, onStart = viewModel::startSession, onOpenPacks = viewModel::openPacks)
+        HomeScreen(
+            ui,
+            onStart = viewModel::startSession,
+            onOpenPacks = viewModel::openPacks,
+            onSelectLanguage = viewModel::selectLanguage,
+        )
     } else {
         BackHandler { viewModel.leaveSession() }
         SessionScreen(

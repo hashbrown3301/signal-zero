@@ -5,6 +5,9 @@ import android.net.Uri
 import android.util.Log
 import java.io.File
 
+/** A pack and where its files are: [dir] is the installed pack's folder, or null for a built-in (asset) pack. */
+data class PackRef(val manifest: PackManifest, val dir: File?)
+
 /**
  * Android side of the pack manager: built-in packs (Hindi, in the APK's assets), installed packs
  * ([PackStore] under filesDir/packs), and the two ways to install without internet:
@@ -33,6 +36,12 @@ class PackRepository(private val context: Context) {
         }
 
     fun installed(): List<PackManifest> = store.list()
+
+    /** The pack to use for a language: an installed pack wins over a built-in one (e.g. an updated Hindi pack). */
+    fun find(lang: String, kind: String): PackRef? {
+        installed().firstOrNull { it.lang == lang && it.kind == kind }?.let { return PackRef(it, store.dir(it.id)) }
+        return builtIn().firstOrNull { it.lang == lang && it.kind == kind }?.let { PackRef(it, null) }
+    }
 
     fun installFromUri(uri: Uri): PackManifest =
         context.contentResolver.openInputStream(uri)?.use { store.install(it) }
