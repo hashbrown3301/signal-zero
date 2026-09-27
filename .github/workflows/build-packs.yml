@@ -67,8 +67,9 @@ jobs:
         run: |
           failed=""
           for p in $PACKS; do
-            if ! python scripts/packs/build_pack.py "${p%%:*}" "${p##*:}" --vits-dir "$RUNNER_TEMP/vits" 2>&1 | tee "build-${p/:/-}.log"; then :; fi
-            if [ "${PIPESTATUS[0]}" != "0" ] || [ ! -f "dist/packs/${p/:/-}/pack.json" ]; then
+            python scripts/packs/build_pack.py "${p%%:*}" "${p##*:}" --vits-dir "$RUNNER_TEMP/vits" 2>&1 | tee "build-${p/:/-}.log" || true
+            # build_pack.py writes pack.json only after every file of the pack is in place.
+            if [ ! -f "dist/packs/${p/:/-}/pack.json" ]; then
               failed="$failed $p"
               python scripts/packs/annotate.py "build $p" "build-${p/:/-}.log"
             fi
