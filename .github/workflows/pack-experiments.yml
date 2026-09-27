@@ -8,6 +8,12 @@ name: Pack experiments
 on:
   workflow_dispatch:
     inputs:
+      which:
+        description: "all = every comparison; tamil-voice = only the Tamil MMS voice formats"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, tamil-voice]
       clips:
         description: "Real recordings per comparison"
         required: true
@@ -56,8 +62,10 @@ jobs:
         run: |
           V="--vits-dir $RUNNER_TEMP/vits"
           python scripts/packs/build_pack.py ta listen $V --variant q8     --override '{"quant": "all"}'
-          python scripts/packs/build_pack.py ta listen $V --variant noconv --override '{"quant": "no-conv"}'
+          python scripts/packs/build_pack.py ta listen $V --variant fp16w  --override '{"quant": "fp16w"}'
           python scripts/packs/build_pack.py ta listen $V --variant fp32   --override '{"quant": "none"}'
+          if [ "${{ inputs.which }}" = "tamil-voice" ]; then exit 0; fi
+          python scripts/packs/build_pack.py ta listen $V --variant noconv --override '{"quant": "no-conv"}'
           python scripts/packs/build_pack.py en speak     --variant parakeet \
             --override '{"asset": "sherpa-onnx-nemo-parakeet_tdt_ctc_110m-en-36000-int8"}'
           python scripts/packs/build_pack.py ml listen $V --variant mms \
@@ -68,13 +76,16 @@ jobs:
         run: |
           E="--espeak-data $RUNNER_TEMP/espeak-ng-data --out dist/exp --clips $CLIPS"
           set +e
-          for v in q8 noconv fp32; do
+          for v in q8 fp16w fp32 noconv; do
+            [ -d "dist/packs/ta-listen-$v" ] || continue
             python scripts/packs/verify_packs.py --packs dist/packs --langs ta $E --listen-id "{lang}-listen-$v" --report ta-$v.json
           done
+          if [ "${{ inputs.which }}" = "all" ]; then
           python scripts/packs/verify_packs.py --packs dist/packs --langs en $E --report en-small.json
           python scripts/packs/verify_packs.py --packs dist/packs --langs en $E --speak-id "{lang}-speak-parakeet" --report en-parakeet.json
           python scripts/packs/verify_packs.py --packs dist/packs --langs ml $E --report ml-piper.json
           python scripts/packs/verify_packs.py --packs dist/packs --langs ml $E --listen-id "{lang}-listen-mms" --report ml-mms.json
+          fi
           set -e
           python - <<'EOF'
           import json, pathlib, statistics

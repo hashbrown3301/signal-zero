@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 import onnx
 import onnxruntime as ort
+from onnx import helper, numpy_helper
 import torch
 from onnxruntime.quantization import QuantType, quantize_dynamic
 
@@ -61,6 +62,30 @@ def _fetch(iso: str, cache: Path) -> Path:
     return folder
 
 
+def weights_to_fp16(src: Path, dst: Path, min_elements: int = 1024) -> None:
+    """Store large float weights as fp16, each followed by a Cast back to fp32. Compute stays fp32: ONNX Runtime
+    constant-folds the Casts when the session is created, so the model runs like fp32 but is about half the size on
+    disk (RAM while loaded is still fp32)."""
+    model = onnx.load(str(src))
+    graph = model.graph
+    graph_inputs = {i.name for i in graph.input}
+    casts, keep, halves = [], [], []
+    for init in graph.initializer:
+        arr = numpy_helper.to_array(init)
+        if init.data_type == onnx.TensorProto.FLOAT and arr.size >= min_elements and init.name not in graph_inputs:
+            halves.append(numpy_helper.from_array(arr.astype(np.float16), init.name + "__fp16"))
+            casts.append(helper.make_node("Cast", [init.name + "__fp16"], [init.name], to=onnx.TensorProto.FLOAT,
+                                          name=init.name + "__to_fp32"))
+        else:
+            keep.append(init)
+    del graph.initializer[:]
+    graph.initializer.extend(keep + halves)
+    nodes = list(graph.node)
+    del graph.node[:]
+    graph.node.extend(casts + nodes)
+    onnx.save(model, str(dst))
+
+
 def _ids(text: str, symbols: list[str], add_blank: bool) -> list[int]:
     index = {s: i for i, s in enumerate(symbols)}
     ids = [index[c] for c in text.lower() if c in index]
@@ -74,7 +99,7 @@ def _ids(text: str, symbols: list[str], add_blank: bool) -> list[int]:
 @torch.no_grad()
 def export(iso: str, language: str, test_phrase: str, vits_dir: Path, out: Path, cache: Path, quant: str = "all") -> dict:
     """quant: "all" (every weight int8, smallest), "no-conv" (int8 except convolutions, which ONNX Runtime often runs
-    slower as int8), or "none" (fp32)."""
+    slower as int8), "fp16w" (fp16 weights, fp32 compute; see weights_to_fp16) or "none" (fp32)."""
     SynthesizerTrn = _load_vits(vits_dir)
     src = _fetch(iso, cache)
     hps = json.loads((src / "config.json").read_text(encoding="utf-8"))
@@ -138,6 +163,9 @@ def export(iso: str, language: str, test_phrase: str, vits_dir: Path, out: Path,
     elif quant == "no-conv":
         quantize_dynamic(str(fp32), str(int8), weight_type=QuantType.QUInt8,
                          op_types_to_quantize=["MatMul", "Gemm", "Attention", "LSTM", "Gather"])
+    elif quant == "fp16w":
+        weights_to_fp16(fp32, int8)
+        int8 = int8.replace(out / "model.fp16w.onnx")
     elif quant == "none":
         fp32.replace(out / "model.onnx")
         fp32 = out / "model.onnx"
