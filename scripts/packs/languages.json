@@ -1,0 +1,41 @@
+{
+  "_comment": "Source of truth for language packs. packet_code values are fixed forever (see docs/PHASE3_PLAN.md). Audit: docs/MODELS.md.",
+  "languages": {
+    "hi": {"packet_code": 1, "name": "Hindi", "native": "हिन्दी", "script": "Devanagari",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "piper", "source": "sherpa", "asset": "vits-piper-hi_IN-priyamvada-medium-int8", "licence": "CC BY-NC-SA 4.0 (dataset)"}},
+    "en": {"packet_code": 2, "name": "English", "native": "English", "script": "Latin",
+           "speak": {"type": "nemo_ctc", "source": "sherpa", "asset": "sherpa-onnx-nemo-ctc-en-conformer-small", "licence": "CC-BY-4.0 (NVIDIA NeMo); confirm in step 3"},
+           "listen": {"type": "piper", "source": "sherpa", "asset": "vits-piper-en_US-lessac-medium-int8", "licence": "see MODEL_CARD; confirm in step 3"}},
+    "mr": {"packet_code": 3, "name": "Marathi", "native": "मराठी", "script": "Devanagari",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "mms", "source": "mms", "iso": "mar"}},
+    "gu": {"packet_code": 4, "name": "Gujarati", "native": "ગુજરાતી", "script": "Gujarati",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "mms", "source": "mms", "iso": "guj"}},
+    "bn": {"packet_code": 5, "name": "Bengali", "native": "বাংলা", "script": "Bengali",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "mms", "source": "mms", "iso": "ben"}},
+    "ta": {"packet_code": 6, "name": "Tamil", "native": "தமிழ்", "script": "Tamil",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "mms", "source": "mms", "iso": "tam"}},
+    "te": {"packet_code": 7, "name": "Telugu", "native": "తెలుగు", "script": "Telugu",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "mms", "source": "mms", "iso": "tel"}},
+    "kn": {"packet_code": 8, "name": "Kannada", "native": "ಕನ್ನಡ", "script": "Kannada",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "mms", "source": "mms", "iso": "kan"}},
+    "ml": {"packet_code": 9, "name": "Malayalam", "native": "മലയാളം", "script": "Malayalam",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "piper", "source": "sherpa", "asset": "vits-piper-ml_IN-meera-medium-int8", "licence": "see MODEL_CARD; confirm in step 3"}},
+    "or": {"packet_code": 10, "name": "Odia", "native": "ଓଡ଼ିଆ", "script": "Odia",
+           "speak": {"type": "nemo_ctc", "source": "indicconformer"},
+           "listen": {"type": "mms", "source": "mms", "iso": "ory"}}
+  },
+  "test_phrases": {
+    "hi": "नमस्ते, आप कैसे हैं?", "en": "Hello, how are you?", "mr": "नमस्कार, तुम्ही कसे आहात?",
+    "gu": "નમસ્તે, તમે કેમ છો?", "bn": "নমস্কার, আপনি কেমন আছেন?", "ta": "வணக்கம், நீங்கள் எப்படி இருக்கிறீர்கள்?",
+    "te": "నమస్కారం, మీరు ఎలా ఉన్నారు?", "kn": "ನಮಸ್ಕಾರ, ನೀವು ಹೇಗಿದ್ದೀರಿ?", "ml": "നമസ്കാരം, സുഖമാണോ?",
+    "or": "ନମସ୍କାର, ଆପଣ କେମିତି ଅଛନ୍ତି?"
+  }
+}

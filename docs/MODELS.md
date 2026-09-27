@@ -71,7 +71,7 @@ engine code; Moonshine is the fallback if pack size matters more.
 | hi | `vits-piper-hi_IN-priyamvada-medium` (bundled) / `-int8` | 67.2 / 21.1 MB | Piper | dataset CC BY-NC-SA 4.0 (from its MODEL_CARD) |
 | hi | `vits-piper-hi_IN-pratham-medium`, `…-rohan-medium` (+ int8) | 67 / 21 MB | Piper | check MODEL_CARD |
 | en | `vits-piper-en_US-*` (many; e.g. `ljspeech-medium`, `amy-medium`) (+ int8 ≈ 21 MB) | 67 / 21 MB | Piper | per voice; check MODEL_CARD |
-| ml | `vits-piper-ml_IN-arjun-medium`, `…-meera-medium` (+ int8) | 67 / 21 MB | Piper | check MODEL_CARD |
+| ml | `vits-piper-ml_IN-arjun-medium`, `…-meera-medium` (+ int8) | 67 / 21 MB | Piper | **unclear**: meera's MODEL_CARD says "License: See URL" (IIT Madras Indic TTS corpus on Kaggle) and it is fine-tuned from `en_US-lessac`. Settle in step 3, or use MMS `mal` instead |
 | gu | `vits-mimic3-gu_IN-cmu-indic_low` | 80.0 MB | Mimic3 (VITS) | check MODEL_CARD |
 | bn | `vits-coqui-bn-custom_female` | 108.1 MB | Coqui (VITS) | check MODEL_CARD |
 | bn | `vits-mimic3-bn-multi_low` | 79.9 MB | Mimic3 (VITS) | check MODEL_CARD |

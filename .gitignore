@@ -29,3 +29,6 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Built language packs (published as draft release assets, never committed)
+dist/

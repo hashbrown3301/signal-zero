@@ -1,0 +1,91 @@
+name: Build language packs
+
+# Started by hand (Actions tab → "Build language packs" → Run workflow). Builds the requested packs with
+# scripts/packs/, smoke-tests them with sherpa-onnx, and uploads them to a DRAFT release (visible only to
+# people with write access to the repo).
+on:
+  workflow_dispatch:
+    inputs:
+      packs:
+        description: "Packs to build: space-separated <lang>:<speak|listen>, e.g. 'ta:listen ml:listen ta:speak'"
+        required: true
+        default: "ta:listen ml:listen ta:speak"
+      release:
+        description: "Draft release tag to upload to"
+        required: true
+        default: "packs-v1"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PACKS: ${{ inputs.packs }}
+      TAG: ${{ inputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pack tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install onnx onnxruntime huggingface_hub numpy sherpa-onnx==1.13.7
+
+      - name: Install MMS export tools (only if an MMS voice is requested)
+        run: |
+          NEEDS_MMS=$(python - <<'EOF'
+          import json, os
+          langs = json.load(open("scripts/packs/languages.json", encoding="utf-8"))["languages"]
+          packs = [p.split(":") for p in os.environ["PACKS"].split()]
+          print(any(kind == "listen" and langs[lang]["listen"]["type"] == "mms" for lang, kind in packs))
+          EOF
+          )
+          echo "needs MMS: $NEEDS_MMS"
+          if [ "$NEEDS_MMS" = "True" ]; then
+            pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+            pip install scipy
+            git clone --depth 1 https://github.com/jaywalnut310/vits "$RUNNER_TEMP/vits"
+          fi
+
+      - name: Get espeak-ng-data (for smoke-testing Piper voices)
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/voice.tar.bz2" \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-hi_IN-priyamvada-medium-int8.tar.bz2
+          tar -xjf "$RUNNER_TEMP/voice.tar.bz2" -C "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP/vits-piper-hi_IN-priyamvada-medium-int8/espeak-ng-data" "$RUNNER_TEMP/espeak-ng-data"
+
+      - name: Build packs
+        run: |
+          for p in $PACKS; do
+            python scripts/packs/build_pack.py "${p%%:*}" "${p##*:}" --vits-dir "$RUNNER_TEMP/vits"
+          done
+
+      - name: Smoke test
+        run: python scripts/packs/smoke_test.py dist/packs/*/ --espeak-data "$RUNNER_TEMP/espeak-ng-data" --out dist/smoke
+
+      - name: Keep samples and manifests as a workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packs-smoke-${{ github.run_number }}
+          path: |
+            dist/smoke/
+            dist/packs/*/pack.json
+
+      - name: Upload to the draft release
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --title "Language packs ($TAG)" --notes-file docs/packs-release-notes.md
+          fi
+          mkdir -p dist/old
+          gh release download "$TAG" -p index.json -D dist/old 2>/dev/null || true
+          python scripts/packs/make_index.py dist/packs dist/old/index.json > dist/index.json
+          gh release upload "$TAG" dist/packs/*.zip dist/index.json --clobber
+          gh release view "$TAG" --json isDraft,assets --jq '"draft=\(.isDraft)", (.assets[] | "\(.name)  \(.size)")'

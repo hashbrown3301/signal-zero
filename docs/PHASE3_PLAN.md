@@ -44,16 +44,27 @@ packet, which drops the link**. Phase 3 fixes both sides:
 - Codes are never renumbered; new languages get new codes.
 - An unknown code decodes as "unknown language" (text shown + install prompt), **not** as a bad packet.
 
+### Lightweight design (decided 2026-09-28)
+- **Speak pack** = STT (≈ 138 MB, int8), only for the language(s) the user speaks, usually one.
+- **Listen pack** = one **int8 voice** (≈ 18–40 MB), for each language the phone should be able to hear.
+  Piper listen packs **reuse the app's bundled `espeak-ng-data`** instead of shipping their own copy
+  (Malayalam: 18.3 MB instead of ≈ 67 MB).
+- Examples: speak Hindi + hear all 10 ≈ 450 MB; speak Hindi + hear 2–3 ≈ 200 MB (vs ≈ 2.5 GB for full packs).
+- **APK ≈ 185 MB:** one APK per CPU type, Hindi speak + listen built in (Hindi voice switched to int8).
+- **Built in the cloud:** `.github/workflows/build-packs.yml` (GitHub Actions) converts the MMS voices (the only step
+  needing PyTorch), builds and smoke-tests packs, and uploads them to a **draft** release (private; only people
+  with repo write access can see it). The PC never installs PyTorch.
+
 ### Language packs (keep the APK small)
 - Hindi stays bundled in the APK, **but is described by the same `pack.json`** as every other pack (no Hindi-only code).
-- Every other language = a **pack**: STT model + tokens + TTS voice + `pack.json` (language code, STT type, TTS type,
-  file list, SHA-256, licence, source URLs and commits).
+- Every other language = **speak and/or listen packs**, each with a `pack.json` (language, packet code, kind, engine
+  type, file list with SHA-256, licences, source URLs and commits). Built by `scripts/packs/build_pack.py`.
 - Installed once, then fully offline:
   - in-app download with progress + SHA-256 check, **or**
   - `adb push` sideload for offline provisioning (demo-day safety net).
 - Stored in app-specific storage; nothing in Kotlin names a specific language. The manifest drives everything.
-- **Hosting (decide at step 7):** the STT models need our metadata patch, so packs have to be hosted by us (e.g. a
-  GitHub Release of the project repo). The licences allow redistribution with attribution; NC voices stay NC.
+- **Hosting:** a **draft** GitHub Release (`packs-v1`) of the project repo, private for now. A phone can't download
+  from a draft without logging in, so step 7 decides between publishing selected packs and `adb` sideloading.
 - **Per-CPU APKs** (ABI splits, step 4): today's APK is 296 MB because it carries three CPU builds; one APK per CPU
   brings each to about 230–250 MB.
 
@@ -75,7 +86,7 @@ packet, which drops the link**. Phase 3 fixes both sides:
 | # | Step | Test |
 |---|---|---|
 | 1 | **Availability audit:** STT model + TTS voice per language, with URL, size and licence in `docs/MODELS.md` | Table complete for all 10 (**done**) |
-| 2 | Generalise `fetch_models.py` + patch script to take a language code; convert MMS voices; build packs into `dist/packs/<lang>/` with `pack.json` | Script builds all 10 packs on the PC |
+| 2 | `scripts/packs/` (build, MMS export, smoke test, index) + GitHub Actions workflow → packs in a draft release | First cloud run: Tamil listen (MMS), Malayalam listen (Piper), Tamil speak; then the rest |
 | 3 | **Desktop verification** (Python, `.venv`): each pack decodes a known clip and synthesises a sentence; pick English STT and the bn/gu voices; try int8 MMS | Correct script + audible voice for all 10 |
 | 4 | Language codes in `PacketCodec` (+ unknown-language handling, tests); pack manager: list, install from file (adb push), SHA-256 verify, delete; per-CPU APKs | Sideload Tamil pack, app lists it |
 | 5 | Language picker + engine factory driven by `pack.json` (STT: nemo_ctc / moonshine / …; TTS: piper / mms / …) | Switch Hindi ↔ Tamil ↔ English on the S25 |
