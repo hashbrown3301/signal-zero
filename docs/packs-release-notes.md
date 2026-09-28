@@ -13,7 +13,7 @@ The app downloads (or you sideload) these once; after that each language works f
 | hi mr gu bn ta te kn ml or `-speak` | IndicConformer (int8 ONNX, metadata added by `scripts/fetch_models.py`) | AI4Bharat; ONNX export by OpenVoiceOS (`OpenVoiceOS/ai4bharat-indicconformer-<lang>-onnx`) | MIT |
 | en `-speak` | NeMo `stt_en_conformer_ctc_small` (sherpa-onnx export) | NVIDIA; sherpa-onnx (k2-fsa) | CC-BY-4.0 |
 | mr gu bn ta te kn ml or `-listen` | MMS-TTS (VITS), exported by `scripts/packs/export_mms.py` with fp16 weights | Meta AI, Massively Multilingual Speech (`dl.fbaipublicfiles.com/mms/tts/`) | **CC-BY-NC-4.0** |
-| hi `-listen` | Piper `hi_IN-priyamvada-medium` (int8, sherpa-onnx) | Piper voice trained on an IndicTTS-based dataset; sherpa-onnx conversion | **CC BY-NC-SA 4.0** (dataset) |
+| hi `-listen` | Piper `hi_IN-priyamvada-medium` (int8, sherpa-onnx) | Piper voice trained by PravalX (github.com/PravalX); dataset per its model card: AI4Bharat indicnlp_corpus; sherpa-onnx conversion | **CC BY-NC-SA 4.0** (dataset) |
 | en `-listen` | Piper `en_US-ljspeech-medium` (int8, sherpa-onnx) | Piper; LJ Speech dataset | public domain (dataset) |
 
 Export code used for the MMS voices: VITS by Jaehyeon Kim et al. (`github.com/jaywalnut310/vits`, MIT), following
