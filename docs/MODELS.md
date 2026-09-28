@@ -167,6 +167,18 @@ and code-mixed words ("pH"), the gotchas the plan predicts. STT runs at RTF ≈ 
   redistribution**; LJ Speech is public domain.
 - **Listening check:** the user listened to the full-sentence samples of every language: all clear.
 
+## On-device results (Phase 3 steps 5–6, 2026-09-28)
+
+| Phone | Load a language (STT + voice) | STT speed | Voice speed | App RAM |
+|---|---|---|---|---|
+| Galaxy S25 (arm64, 12 GB) | 0.9–1.1 s (ta, hi) | Tamil 169–221 ms for a short sentence | Tamil MMS about 0.4 s; Hindi Piper 140 ms | – |
+| Galaxy A03 Core (32-bit, 1.9 GB, Android Go) | Hindi 43 s (22.7 + 19.9 s) | **3.6–3.7× slower than real time** (Tamil 13.9 s for 3.9 s of speech; Hindi 6.2 s for 1.7 s) | **Tamil MMS 27 s per sentence**; Hindi Piper 2.9–4.2 s | 326–334 MB PSS (target < 450 MB) |
+
+Mixed languages over Bluetooth work both ways (A03 Core in Tamil ↔ S25 in Hindi): each phone speaks the other's
+language with the right voice, loading it on first use. The A03 Core ran Hindi STT at about 1× real time in Phase 2,
+so part of today's slowness is the phone's state (memory pressure, 26–40 MB swapped out). Either way, MMS voices are
+too heavy for a 32-bit low-end CPU. **Recommended minimum: a 64-bit phone with ≥ 4 GB RAM.**
+
 ## Open questions for later steps
 - **Step 3:** actually decode a known clip per language (catches a model/vocabulary mismatch the metadata can't),
   compare Bengali/Gujarati voice options, pick the English STT, confirm the remaining licences from each MODEL_CARD.

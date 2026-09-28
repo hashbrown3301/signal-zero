@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,6 +68,7 @@ fun SessionScreen(
     onLeave: () -> Unit,
     onPressStart: () -> Boolean,
     onPressEnd: () -> Unit,
+    onOpenPacks: () -> Unit,
 ) {
     val session = ui.session
     val context = LocalContext.current
@@ -123,7 +125,7 @@ fun SessionScreen(
                     )
                 }
             }
-            items(session.messages, key = { it.id }) { MessageBubble(it, ui.myLanguage) }
+            items(session.messages, key = { it.id }) { MessageBubble(it, ui.myLanguage, onOpenPacks) }
         }
 
         val btOff = ui.link == Link.BLUETOOTH && ui.mode != Mode.SOLO &&
@@ -292,7 +294,7 @@ private fun HostAddressCard(ui: MainViewModel.UiState) {
 }
 
 @Composable
-private fun MessageBubble(m: Message, myLanguage: String) {
+private fun MessageBubble(m: Message, myLanguage: String, onInstallVoice: () -> Unit) {
     val mine = m.direction != Direction.INCOMING
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = if (mine) Alignment.CenterEnd else Alignment.CenterStart) {
         Column(
@@ -317,6 +319,11 @@ private fun MessageBubble(m: Message, myLanguage: String) {
             Text(m.text, fontSize = 20.sp, lineHeight = 28.sp)
             m.endToEndMs?.let {
                 Text("end-to-end $it ms", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            }
+            if (m.status == Status.NO_VOICE) {
+                TextButton(onClick = onInstallVoice, contentPadding = PaddingValues(0.dp)) {
+                    Text("Install ${m.langCode?.let { Language.fromCode(it)?.name } ?: "this language's"} voice →")
+                }
             }
             detailLines(m).forEach {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

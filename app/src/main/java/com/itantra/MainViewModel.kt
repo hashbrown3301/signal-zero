@@ -1,5 +1,6 @@
 package com.itantra
 
+import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
@@ -43,6 +44,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.flow.first
 import com.itantra.speech.EngineFactory
+import com.itantra.speech.VoiceCache
 import com.itantra.comm.Language
 import kotlinx.coroutines.withContext
 
@@ -127,8 +129,26 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     private val engineLock = Mutex()
     private var vad: VadTrimmer? = null
     private var stt: SttEngine? = null
-    /** Loaded voices by packet language code. Step 5: only this phone's own language (step 6 adds lazy loading). */
-    private val voices = mutableMapOf<Int, TtsEngine>()
+    /**
+     * Voices by packet language code, loaded when a message in that language first needs one. Keeps 2 voices,
+     * 1 on Android "low RAM" phones (e.g. the A03 Core). The phone's own voice is only needed in Solo, so it isn't pinned.
+     */
+    private val lowRam = app.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+    private val voices = VoiceCache(
+        capacity = if (lowRam) 1 else 2,
+        load = { code -> loadVoice(code) },
+        release = { it.release() },
+    )
+
+    private fun loadVoice(code: Int): TtsEngine? {
+        val iso = Language.fromCode(code)?.iso ?: return null
+        val pack = packRepo.find(iso, PackManifest.KIND_LISTEN) ?: return null
+        val t = SystemClock.elapsedRealtime()
+        return factory.tts(pack).also {
+            Log.i(TAG, "TTS ${pack.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms " +
+                "(voices in memory: ${voices.loaded().size + 1}, max ${if (lowRam) 1 else 2})")
+        }
+    }
     private var session: SessionManager? = null
     private var sessionJob: Job? = null
 
@@ -184,18 +204,14 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     }
                     stt?.release()
                     stt = null
-                    voices.values.forEach { it.release() }
                     voices.clear()
 
-                    var t = SystemClock.elapsedRealtime()
+                    val t = SystemClock.elapsedRealtime()
                     val speak = packRepo.find(iso, PackManifest.KIND_SPEAK) ?: error("No speak pack installed for $iso")
                     stt = factory.stt(speak)
                     Log.i(TAG, "STT ${speak.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
-                    packRepo.find(iso, PackManifest.KIND_LISTEN)?.let { listen ->
-                        t = SystemClock.elapsedRealtime()
-                        voices[listen.manifest.packetCode] = factory.tts(listen)
-                        Log.i(TAG, "TTS ${listen.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
-                    }
+                    // Preload this language's voice so the first Solo reply is quick (loaded lazily otherwise).
+                    Language.fromIso(iso)?.let { voices.get(it.code) }
                     SystemClock.elapsedRealtime() - start
                 }
             }
@@ -254,7 +270,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val sm = SessionManager(
                 this,
                 DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt)),
-                DeviceSpeaker { code -> engineLock.withLock { voices[code] } },
+                DeviceSpeaker { code -> withContext(Dispatchers.Default) { engineLock.withLock { voices.get(code) } } },
                 transport,
                 language = language,
                 clock = SystemClock::elapsedRealtime,
@@ -400,6 +416,8 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     }
 
     fun deletePack(id: String) = packAction { repo ->
+        val pack = repo.installed().firstOrNull { it.id == id }
+        if (pack?.isListen == true) voices.evict(pack.packetCode)
         if (repo.delete(id)) "Deleted $id" to false else "$id was not installed" to true
     }
 
@@ -462,7 +480,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         leaveSession()
         vad?.release()
         stt?.release()
-        voices.values.forEach { it.release() }
+        voices.clear()
     }
 
     private companion object {

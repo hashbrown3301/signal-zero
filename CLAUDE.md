@@ -26,7 +26,9 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Step 3 wrap-up: the 9 changed listen packs rebuilt and smoke-tested (MMS fp16 57.6–57.7 MB, en ljspeech 19.4 MB)
   - [x] Step 4: language codes 1–10 in `Packet` (unknown codes decode instead of dropping the link); `packs/` pack manager (`PackStore`: zip install with SHA-256 + zip-slip checks, atomic replace; `PackRepository`: built-in Hindi from `assets/builtin/`, adb sideload folder, file-picker import); "Language packs" screen; per-CPU APKs (arm64 241.5 MB). S25: Tamil packs installed in about 3 s, damaged copy rejected.
   - [x] Step 5: language picker + engine factory driven by `pack.json` (`speech/EngineFactory`: built-in = assets, installed = files); "I speak" picker (one STT loaded at a time); outgoing packets tagged with the phone's language; `Status.NO_VOICE` (text shown, still ACKed). S25: switching hi ↔ ta takes 0.9–1.1 s; Solo in Tamil transcribes in Tamil script and speaks back with the Tamil MMS voice (TTS about 0.4 s). 62 PC tests.
-  - [ ] Step 6: lazy voice loading + LRU (2 voices, 1 on low-RAM phones) + missing-pack prompt; RAM on the A03 Core; built-in Hindi voice format (fp32 63 MB vs int8/fp16)
+  - [x] Step 6: voices load on demand (`speech/VoiceCache`, LRU: 2 voices, 1 on Android low-RAM phones; own voice not pinned since it's only needed in Solo); "Install <language> voice →" prompt on text-only messages opens Language packs (session keeps running). Two phones over Bluetooth: A03 Core (Tamil) ↔ S25 (Hindi), each spoke the other's language; A03 Core 326–334 MB PSS (< 450 MB target). 67 PC tests. Not verified on a phone: the install prompt; the int8 Hindi voice comparison (`hi-listen.zip` still waits in the A03 Core's sideload folder).
+  - Finding: the **A03 Core is below a usable spec**: STT 3.6–3.7× slower than real time, MMS Tamil voice 27 s per sentence, loading Hindi 43 s. Recommended minimum: 64-bit phone with ≥ 4 GB RAM. Low-end speed-ups (threads, lighter voices) are future work.
+  - [ ] Step 7: in-app pack download (needs a non-draft host or sideloading only — decide)
 
 ## Rules
 

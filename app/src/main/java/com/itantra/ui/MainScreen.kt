@@ -11,7 +11,9 @@ import com.itantra.MainViewModel
 @Composable
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val ui by viewModel.state.collectAsState()
-    if (ui.mode == null && ui.showPacks) {
+    // Language packs opens from the start screen, or from a session's "Install … voice" prompt (the session
+    // keeps running underneath and resumes on Back).
+    if (ui.showPacks) {
         BackHandler { viewModel.closePacks() }
         PacksScreen(
             packs = ui.packs,
@@ -34,6 +36,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             onLeave = viewModel::leaveSession,
             onPressStart = viewModel::onPressStart,
             onPressEnd = viewModel::onPressEnd,
+            onOpenPacks = viewModel::openPacks,
         )
     }
 }
