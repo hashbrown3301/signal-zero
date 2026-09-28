@@ -32,6 +32,12 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [ ] Step 8 (**standby**): accuracy benchmark (20 FLEURS sentences per language, CER/WER via `verify-packs.yml` with clips=20; 3 per language spot-checked on the phone)
   - [ ] Step 9 (**standby**): two-phone cross test, phones in different languages, over Wi-Fi and Bluetooth (core already seen working in step 6)
 
+- [ ] **UI redesign** (design canvas "iTantra UI", a private claude.ai artifact: Home · Talk · Solo · Languages · Metrics · Alert, Logo, System). Dark navy + teal, no chat bubbles, link status green/yellow/red, amber only for alerts.
+  - [x] A: mockup approved (Connect is the Home screen; iTantra header + logo on every screen; Solo tab)
+  - [x] B: `ui/theme/` (Material 3 colour scheme, type scale, shapes; bundled Manrope + Noto Sans per script + JetBrains Mono, OFL licences in `assets/licenses/`; `scriptFont(iso)` picks the Noto family for Indian-script text), `ui/components/` (Primary/SecondaryButton, HoldToTalkButton with 4 states, LinkMotif/LinkStatusLabel, ITantraMark/Wordmark/BrandHeader), adaptive launcher icon, navy window theme. APK +1.5 MB.
+  - [ ] C: restyle the screens to the design, with bottom navigation (Home · Talk · Languages · Metrics). Speech and network code untouched.
+  - [ ] D (later, separate steps): Phone mode, Alert, Metrics screen
+
 **Pending test day** (all tooling ready): Phase 1+2 exit run (10 sentences each way, Wi-Fi + Bluetooth, `summarize_benchmarks.py`), Phase 3 steps 8–9, and the step 6 leftovers (install prompt, int8 Hindi voice on the A03 Core).
 
 ## Rules
