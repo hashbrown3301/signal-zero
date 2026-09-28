@@ -6,6 +6,7 @@ import com.itantra.comm.Packet
 import com.itantra.comm.PacketCodec
 import com.itantra.comm.PacketType
 import com.itantra.comm.Transport
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -220,6 +221,8 @@ class SessionManager(
         scope.launch {
             try {
                 handleSpeech(listener.finish(), releasedAt)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(notice = "Processing failed: ${e.message}") }
             } finally {
@@ -325,6 +328,8 @@ class SessionManager(
                 }
                 prepared.play()
                 updateMessage(item.messageId) { it.copy(status = Status.PLAYED) }
+            } catch (e: CancellationException) {
+                throw e  // the session is closing (e.g. Leave while speaking): not a playback failure
             } catch (e: Exception) {
                 updateMessage(item.messageId) { it.copy(status = Status.FAILED, error = e.message) }
             } finally {

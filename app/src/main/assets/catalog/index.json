@@ -1,0 +1,333 @@
+{
+  "format": 1,
+  "packs": {
+    "ml-listen": {
+      "lang": "ml",
+      "packet_code": 9,
+      "name": "Malayalam",
+      "native": "മലയാളം",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57656859,
+      "zip": "ml-listen.zip",
+      "zip_size": 52631685,
+      "zip_sha256": "65dd335b94dabc5e7c6194983ec32a2741e48ffaf51b0935b111688bb38474c5",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:24:13Z"
+    },
+    "ta-listen": {
+      "lang": "ta",
+      "packet_code": 6,
+      "name": "Tamil",
+      "native": "தமிழ்",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57646695,
+      "zip": "ta-listen.zip",
+      "zip_size": 52610799,
+      "zip_sha256": "18dc83dd7bf70888f62fd6da6bdb14bdbf5f3277f5ff00e63f76cfaf03fa319d",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:25:10Z"
+    },
+    "ta-speak": {
+      "lang": "ta",
+      "packet_code": 6,
+      "name": "Tamil",
+      "native": "தமிழ்",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680463,
+      "zip": "ta-speak.zip",
+      "zip_size": 97644510,
+      "zip_sha256": "e117614bf42114ea84dd8b9c73e7020bd125b6b063b3d739614b03b7e7041682",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:35:24Z"
+    },
+    "bn-listen": {
+      "lang": "bn",
+      "packet_code": 5,
+      "name": "Bengali",
+      "native": "বাংলা",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57652951,
+      "zip": "bn-listen.zip",
+      "zip_size": 52619715,
+      "zip_sha256": "009b280b179f65f7c6863d1d5167a37336202550de7c11231bcd7758b029ce37",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:24:56Z"
+    },
+    "bn-speak": {
+      "lang": "bn",
+      "packet_code": 5,
+      "name": "Bengali",
+      "native": "বাংলা",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680148,
+      "zip": "bn-speak.zip",
+      "zip_size": 97521702,
+      "zip_sha256": "5b93a251e72bae05534a40b195302ff37a9976fdc38b4cdf01f5d37b0ab22ef1",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:48:30Z"
+    },
+    "en-listen": {
+      "lang": "en",
+      "packet_code": 2,
+      "name": "English",
+      "native": "English",
+      "kind": "listen",
+      "engine": "piper",
+      "size": 19351252,
+      "zip": "en-listen.zip",
+      "zip_size": 13532490,
+      "zip_sha256": "f0aa475a3bcca675b12d4efe0ebef22c993792b42d76f60a852e7f786eb7f566",
+      "licences": [
+        "public domain (LJ Speech dataset)"
+      ],
+      "built": "2026-09-27T21:23:58Z"
+    },
+    "en-speak": {
+      "lang": "en",
+      "packet_code": 2,
+      "name": "English",
+      "native": "English",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 46431465,
+      "zip": "en-speak.zip",
+      "zip_size": 18974205,
+      "zip_sha256": "660ba54a16f15fdca39a3a26ff8c59d4eb6bc3a59fbee5f37bf1662a35c909e2",
+      "licences": [
+        "CC-BY-4.0 (NVIDIA NeMo); confirm in step 3"
+      ],
+      "built": "2026-09-27T19:47:22Z"
+    },
+    "gu-listen": {
+      "lang": "gu",
+      "packet_code": 4,
+      "name": "Gujarati",
+      "native": "ગુજરાતી",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57647498,
+      "zip": "gu-listen.zip",
+      "zip_size": 52635144,
+      "zip_sha256": "fac87755c7b8ead9ca67858b1a63697db230cdad013cce9661ed7e6505ab88fa",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:24:41Z"
+    },
+    "gu-speak": {
+      "lang": "gu",
+      "packet_code": 4,
+      "name": "Gujarati",
+      "native": "ગુજરાતી",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680163,
+      "zip": "gu-speak.zip",
+      "zip_size": 97502034,
+      "zip_sha256": "088cd2d0a2793e720de2f86ea2e5ca2b28c366983d1b1d4333868f37789cc294",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:48:02Z"
+    },
+    "hi-listen": {
+      "lang": "hi",
+      "packet_code": 1,
+      "name": "Hindi",
+      "native": "हिन्दी",
+      "kind": "listen",
+      "engine": "piper",
+      "size": 18576950,
+      "zip": "hi-listen.zip",
+      "zip_size": 13481089,
+      "zip_sha256": "249de95f3ea80b605ce9ba7c55b208f512491900c76d666a714e1a09bf6ab0e3",
+      "licences": [
+        "CC BY-NC-SA 4.0 (dataset)"
+      ],
+      "built": "2026-09-27T19:47:14Z"
+    },
+    "hi-speak": {
+      "lang": "hi",
+      "packet_code": 1,
+      "name": "Hindi",
+      "native": "हिन्दी",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680121,
+      "zip": "hi-speak.zip",
+      "zip_size": 97695014,
+      "zip_sha256": "7ece88ba661d3d206aa15f849e5ce54e48085b14887a5130cb1cfadce20f1ff9",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:47:05Z"
+    },
+    "kn-listen": {
+      "lang": "kn",
+      "packet_code": 8,
+      "name": "Kannada",
+      "native": "ಕನ್ನಡ",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57653342,
+      "zip": "kn-listen.zip",
+      "zip_size": 52626864,
+      "zip_sha256": "489f3bac10b474dcd6c5a5d09585ab2962cd70688116cf6905eebd1ae31abf41",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:25:40Z"
+    },
+    "kn-speak": {
+      "lang": "kn",
+      "packet_code": 8,
+      "name": "Kannada",
+      "native": "ಕನ್ನಡ",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680235,
+      "zip": "kn-speak.zip",
+      "zip_size": 97486315,
+      "zip_sha256": "4692492e710a0e5681cfb12d4684fddaa683aedd991584de0db62f2fbe07ef9b",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:49:37Z"
+    },
+    "ml-speak": {
+      "lang": "ml",
+      "packet_code": 9,
+      "name": "Malayalam",
+      "native": "മലയാളം",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680244,
+      "zip": "ml-speak.zip",
+      "zip_size": 97494420,
+      "zip_sha256": "f27ee86c0ce9955e54b25097f8a70fa8b1f2dc20149dc035f7d4b429ac7b359a",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:50:12Z"
+    },
+    "mr-listen": {
+      "lang": "mr",
+      "packet_code": 3,
+      "name": "Marathi",
+      "native": "मराठी",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57652564,
+      "zip": "mr-listen.zip",
+      "zip_size": 52627252,
+      "zip_sha256": "f7f51379fbfedaab0798f7988c7062eccb079d2483e8cd337153b76ed2b6c189",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:24:27Z"
+    },
+    "mr-speak": {
+      "lang": "mr",
+      "packet_code": 3,
+      "name": "Marathi",
+      "native": "मराठी",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680142,
+      "zip": "mr-speak.zip",
+      "zip_size": 97489433,
+      "zip_sha256": "2c911508074d0026b635434148562aa9eb67980e7a84ea320f6f319a9ff22ff2",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:47:31Z"
+    },
+    "or-listen": {
+      "lang": "or",
+      "packet_code": 10,
+      "name": "Odia",
+      "native": "ଓଡ଼ିଆ",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57653731,
+      "zip": "or-listen.zip",
+      "zip_size": 52620615,
+      "zip_sha256": "cc3cd595a4b2a85fee3169bd308ad7b6cbd4d1d8dcdbd0b6f98599ddfaa2dcc0",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:25:57Z"
+    },
+    "or-speak": {
+      "lang": "or",
+      "packet_code": 10,
+      "name": "Odia",
+      "native": "ଓଡ଼ିଆ",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680178,
+      "zip": "or-speak.zip",
+      "zip_size": 97479955,
+      "zip_sha256": "1e50b8d9b5424964f3ca5f7af1c11f11461d25005476df2a12e902b8b3ae41fe",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:50:22Z"
+    },
+    "te-listen": {
+      "lang": "te",
+      "packet_code": 7,
+      "name": "Telugu",
+      "native": "తెలుగు",
+      "kind": "listen",
+      "engine": "mms",
+      "size": 57649449,
+      "zip": "te-listen.zip",
+      "zip_size": 52636191,
+      "zip_sha256": "05249c8c0aadf62ab2441855f8a953aac943ac77f1acf84cd2c8ff47f3fbbacc",
+      "licences": [
+        "CC-BY-NC-4.0",
+        "MIT"
+      ],
+      "built": "2026-09-27T21:25:25Z"
+    },
+    "te-speak": {
+      "lang": "te",
+      "packet_code": 7,
+      "name": "Telugu",
+      "native": "తెలుగు",
+      "kind": "speak",
+      "engine": "nemo_ctc",
+      "size": 137680127,
+      "zip": "te-speak.zip",
+      "zip_size": 97504996,
+      "zip_sha256": "2796c7ee7d4118d9e267669637ce16fc467c2c79e5adffa7a22fd89ba9b74658",
+      "licences": [
+        "MIT"
+      ],
+      "built": "2026-09-27T19:49:03Z"
+    }
+  }
+}

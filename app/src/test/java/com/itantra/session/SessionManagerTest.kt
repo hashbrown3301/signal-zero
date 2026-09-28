@@ -315,4 +315,15 @@ class SessionManagerTest {
         sm.state.first { it.messages.singleOrNull()?.status == Status.PLAYED }
         assertEquals(listOf("வணக்கம்"), speaker.played.toList())
     }
+
+    @Test
+    fun leavingWhileSpeakingIsNotAFailure() = test {
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(playMs = 5_000), transport = null, minPressMs = 0)
+            .also { it.start() }
+        sm.talk()
+        sm.state.first { it.messages.singleOrNull()?.status == Status.PLAYING }
+        sm.close()  // Leave while the voice is still speaking
+        delay(300)
+        assertEquals(Status.PLAYING, sm.state.value.messages.single().status)
+    }
 }

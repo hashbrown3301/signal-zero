@@ -21,6 +21,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             onImport = viewModel::importPack,
             onRescan = viewModel::openPacks,
             onDelete = viewModel::deletePack,
+            onDownload = viewModel::downloadPack,
+            onCancelDownload = viewModel::cancelDownload,
+            onRefreshCatalog = viewModel::refreshCatalog,
         )
     } else if (ui.mode == null) {
         HomeScreen(

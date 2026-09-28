@@ -28,7 +28,8 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Step 5: language picker + engine factory driven by `pack.json` (`speech/EngineFactory`: built-in = assets, installed = files); "I speak" picker (one STT loaded at a time); outgoing packets tagged with the phone's language; `Status.NO_VOICE` (text shown, still ACKed). S25: switching hi ↔ ta takes 0.9–1.1 s; Solo in Tamil transcribes in Tamil script and speaks back with the Tamil MMS voice (TTS about 0.4 s). 62 PC tests.
   - [x] Step 6: voices load on demand (`speech/VoiceCache`, LRU: 2 voices, 1 on Android low-RAM phones; own voice not pinned since it's only needed in Solo); "Install <language> voice →" prompt on text-only messages opens Language packs (session keeps running). Two phones over Bluetooth: A03 Core (Tamil) ↔ S25 (Hindi), each spoke the other's language; A03 Core 326–334 MB PSS (< 450 MB target). 67 PC tests. Not verified on a phone: the install prompt; the int8 Hindi voice comparison (`hi-listen.zip` still waits in the A03 Core's sideload folder).
   - Finding: the **A03 Core is below a usable spec**: STT 3.6–3.7× slower than real time, MMS Tamil voice 27 s per sentence, loading Hindi 43 s. Recommended minimum: 64-bit phone with ≥ 4 GB RAM. Low-end speed-ups (threads, lighter voices) are future work.
-  - [ ] Step 7: in-app pack download (needs a non-draft host or sideloading only — decide)
+  - [x] Step 7: packs are **public** (release `packs-v1`, published by `.github/workflows/publish-packs.yml` with attribution notes); Language packs lists **all 10 languages** from a catalogue bundled in the APK (`assets/catalog/index.json`, refreshable online); `packs/PackDownloader` downloads with resume (HTTP Range), SHA-256 check, then the normal `PackStore` install; mobile-data warning. Verified: English downloaded on the S25 and the A03 Core, then used in airplane mode (STT 70 ms on the S25). Cancel/resume only verified by PC tests. 73 PC tests.
+  - [ ] Step 8: accuracy benchmark (20 FLEURS sentences per language, CER/WER; 3 per language spot-checked on the phone)
 
 ## Rules
 
@@ -53,6 +54,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 - `scripts/fake_peer.py`: PC stand-in for the second phone (`adb forward`/`reverse`, `--watch FILE` for scripted sends)
 - `scripts/packs/`: language-pack builder (`languages.json` is the per-language source of truth; MMS export runs only in CI)
 - `.github/workflows/build-packs.yml`: manual cloud build of packs → draft release (packs are never committed; `dist/` is gitignored)
+- `.github/workflows/publish-packs.yml`: makes the pack release public and checks every asset downloads without a login
 - `scripts/summarize_benchmarks.py`: `--pull DIR` copies every connected phone's CSVs; then it prints the `BENCHMARKS.md` tables for the scripted sentences (`--save-filtered DIR` keeps only those rows, safe to commit)
 - Models (`app/src/main/assets/{vad,stt,tts}`) and `app/libs/*.aar` are gitignored; recreate them with the fetch script.
 

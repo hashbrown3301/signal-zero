@@ -62,6 +62,43 @@ class PackRepository(private val context: Context) {
 
     fun delete(id: String): Boolean = store.delete(id).also { if (it) Log.i(TAG, "deleted pack $id") }
 
+    // ---------- catalogue + download ----------
+
+    private val catalogFile = File(context.filesDir, "catalog/index.json")
+    private val downloader = PackDownloader(File(context.cacheDir, "downloads"))
+
+    /** Every downloadable pack: the last copy fetched from the internet, else the one built into the APK. */
+    fun catalog(): PackCatalog {
+        catalogFile.takeIf { it.isFile }?.let { f ->
+            runCatching { return PackCatalog.parse(f.readText()) }.onFailure { Log.w(TAG, "bad cached catalogue", it) }
+        }
+        return context.assets.open("catalog/index.json").use { PackCatalog.parse(it.readBytes().decodeToString()) }
+    }
+
+    /** Fetches the latest catalogue (needs internet); keeps the old one if anything goes wrong. */
+    fun refreshCatalog(): PackCatalog {
+        val text = java.net.URL(PackCatalog.INDEX_URL).openStream().use { it.readBytes().decodeToString() }
+        val catalog = PackCatalog.parse(text)  // validate before replacing the cached copy
+        catalogFile.parentFile?.mkdirs()
+        catalogFile.writeText(text)
+        return catalog
+    }
+
+    /**
+     * Downloads pack [id] (resuming a partial download), checks the zip's SHA-256, then installs it through
+     * the same checks as a sideloaded pack. [progress] returns false to cancel (the partial file is kept).
+     */
+    fun downloadAndInstall(id: String, progress: PackDownloader.Progress): PackManifest {
+        val catalog = catalog()
+        val entry = catalog.packs[id] ?: throw PackException("$id is not in the catalogue")
+        val zip = downloader.download(catalog.url(id), entry.zip, entry.zipSize, entry.zipSha256, progress)
+        try {
+            return zip.inputStream().use { store.install(it) }.also { Log.i(TAG, "downloaded and installed $id") }
+        } finally {
+            zip.delete()
+        }
+    }
+
     private companion object {
         const val TAG = "iTantra"
         const val BUILTIN = "builtin"

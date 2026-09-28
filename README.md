@@ -51,8 +51,11 @@ adb logcat -s iTantra:* AndroidRuntime:E
 
 - A real phone is recommended. The x86_64 emulator is supported, but it needs roughly 16 GB of PC RAM to run alongside Gradle.
 - The debug APK is about 240 MB per CPU type because the Hindi models are bundled as uncompressed assets.
-- Other languages are installed as packs (Language packs screen → Import pack…, or `adb push <pack>.zip
-  /sdcard/Android/data/com.itantra/files/incoming/`). Packs are built by `.github/workflows/build-packs.yml`.
+- Other languages are installed as packs from the **Language packs** screen: tap **Download** (needs internet
+  once; packs come from the public release https://github.com/hashbrown3301/signal-zero/releases/tag/packs-v1),
+  or without internet use **Import pack…** or `adb push <pack>.zip /sdcard/Android/data/com.itantra/files/incoming/`.
+  After installing, every language works fully offline. Packs are built by `.github/workflows/build-packs.yml`;
+  attribution and licences are in the release notes.
 
 ## License
 

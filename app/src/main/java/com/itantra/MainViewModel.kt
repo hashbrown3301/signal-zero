@@ -19,6 +19,8 @@ import com.itantra.bluetooth.BluetoothTransport
 import com.itantra.comm.LinkState
 import com.itantra.comm.LocalAddress
 import com.itantra.comm.Transport
+import com.itantra.packs.CatalogEntry
+import com.itantra.packs.PackDownloader
 import com.itantra.packs.PackManifest
 import com.itantra.packs.PackRepository
 import com.itantra.comm.TcpTransport
@@ -70,9 +72,16 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         val hasListen: Boolean,
     )
 
+    /** A pack download in progress (or failed, with [error]). */
+    data class DownloadUi(val downloaded: Long = 0, val total: Long = 0, val error: String? = null)
+
     data class PacksUi(
         val builtIn: List<PackManifest> = emptyList(),
         val installed: List<PackManifest> = emptyList(),
+        /** Every downloadable pack (all 10 languages), from the catalogue. */
+        val catalog: List<Pair<String, CatalogEntry>> = emptyList(),
+        /** Downloads by pack id; at most one runs at a time. */
+        val downloads: Map<String, DownloadUi> = emptyMap(),
         val busy: Boolean = false,
         /** Result of the last install/delete, e.g. "Installed Tamil (listen)" or an error. */
         val message: String? = null,
@@ -410,6 +419,50 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     fun closePacks() = _state.update { it.copy(showPacks = false) }
 
+    private var downloadJob: Job? = null
+
+    /** Downloads and installs pack [id]; progress shows on the Language packs screen. One download at a time. */
+    fun downloadPack(id: String) {
+        if (downloadJob?.isActive == true) return
+        updateDownload(id) { DownloadUi() }
+        downloadJob = viewModelScope.launch {
+            val job = coroutineContext[Job]
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    packRepo.downloadAndInstall(id) { done, total ->
+                        updateDownload(id) { it.copy(downloaded = done, total = total) }
+                        job?.isActive == true  // false = cancel
+                    }
+                }
+            }
+            result.onSuccess { m ->
+                _state.update { it.copy(packs = it.packs.copy(downloads = it.packs.downloads - id)) }
+                packAction { "Installed ${m.name} (${m.kind}), ${"%.1f".format(m.size / 1e6)} MB" to false }
+            }.onFailure { e ->
+                if (e is PackDownloader.Cancelled || e is kotlinx.coroutines.CancellationException) {
+                    _state.update { it.copy(packs = it.packs.copy(downloads = it.packs.downloads - id)) }
+                } else {
+                    Log.w(TAG, "download $id failed", e)
+                    updateDownload(id) { it.copy(error = e.message ?: e.toString()) }
+                }
+            }
+        }
+    }
+
+    fun cancelDownload() {
+        downloadJob?.cancel()
+    }
+
+    /** Fetches the latest pack list from the internet (the bundled list works offline). */
+    fun refreshCatalog() = packAction { repo ->
+        repo.refreshCatalog()
+        "Pack list updated" to false
+    }
+
+    private fun updateDownload(id: String, change: (DownloadUi) -> DownloadUi) = _state.update {
+        it.copy(packs = it.packs.copy(downloads = it.packs.downloads + (id to change(it.packs.downloads[id] ?: DownloadUi()))))
+    }
+
     fun importPack(uri: Uri) = packAction { repo ->
         val m = repo.installFromUri(uri)
         "Installed ${m.name} (${m.kind}), ${"%.1f".format(m.size / 1e6)} MB" to false
@@ -436,12 +489,14 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val (builtIn, installed, incoming) = withContext(Dispatchers.IO) {
                 Triple(packRepo.builtIn(), packRepo.installed(), packRepo.incomingDir?.absolutePath.orEmpty())
             }
+            val catalog = withContext(Dispatchers.IO) { runCatching { packRepo.catalog().sorted }.getOrDefault(emptyList()) }
             refreshLanguages()
             val mine = _state.value.myLanguage
             if (_state.value.languages.none { it.iso == mine && it.hasSpeak }) loadLanguage("hi")
             _state.update {
                 it.copy(
-                    packs = PacksUi(builtIn, installed, busy = false, message = message ?: it.packs.message,
+                    packs = it.packs.copy(builtIn = builtIn, installed = installed, catalog = catalog, busy = false,
+                        message = message ?: it.packs.message,
                         messageIsError = if (message != null) isError else it.packs.messageIsError, incomingPath = incoming),
                 )
             }
