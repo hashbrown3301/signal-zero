@@ -1,0 +1,42 @@
+name: Publish packs
+
+# Started by hand. Makes the pack release public so the app can download packs without a login:
+# refreshes the release notes (attribution + licences), turns the draft into a normal release, then checks that
+# every asset downloads anonymously.
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release tag to publish"
+        required: true
+        default: "packs-v1"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update notes and publish
+        run: |
+          gh release edit "$TAG" --notes-file docs/packs-release-notes.md --title "Language packs ($TAG)" \
+            --draft=false --latest=false --tag "$TAG" --target "${{ github.sha }}"
+          gh release view "$TAG" --json isDraft,url,tagName --jq '"draft=\(.isDraft) \(.tagName) \(.url)"'
+
+      - name: Check anonymous downloads
+        run: |
+          failed=""
+          for name in $(gh release view "$TAG" --json assets --jq '.assets[].name'); do
+            url="https://github.com/${{ github.repository }}/releases/download/$TAG/$name"
+            code=$(curl -sIL -o /dev/null -w "%{http_code}" "$url")   # no token: exactly what a phone sees
+            echo "$code $name"
+            [ "$code" = "200" ] || failed="$failed $name"
+          done
+          if [ -n "$failed" ]; then echo "::error title=Not downloadable::$failed"; exit 1; fi
+          echo "::notice title=Packs published::All assets download without a login from https://github.com/${{ github.repository }}/releases/tag/$TAG"
