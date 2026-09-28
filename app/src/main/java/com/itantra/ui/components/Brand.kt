@@ -4,7 +4,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,6 +74,23 @@ fun Wordmark(style: TextStyle, modifier: Modifier = Modifier) {
     )
 }
 
+/** Slim top bar on every screen but Home: small mark, wordmark, and an action on the right. */
+@Composable
+fun BrandBar(modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
+    Column(modifier) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ITantraMark(24.dp)
+            Wordmark(MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), Modifier.weight(1f))
+            trailing()
+        }
+        Rule(color = Palette.LineFaint)
+    }
+}
+
 /** Home screen header: mark, wordmark and tagline. */
 @Composable
 fun BrandHeader(modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
@@ -77,7 +98,7 @@ fun BrandHeader(modifier: Modifier = Modifier, trailing: @Composable () -> Unit 
         ITantraMark(52.dp)
         Column(Modifier.weight(1f)) {
             Wordmark(MaterialTheme.typography.headlineMedium)
-            Text("Offline voice link · no mobile network", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+            Text("Offline voice link", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
         }
         trailing()
     }
