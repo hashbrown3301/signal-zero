@@ -28,6 +28,9 @@ interface Speaker {
      * the ACK can go out first. Returns null if this phone has no voice for that language.
      */
     suspend fun prepare(text: String, langCode: Int): Prepared?
+
+    /** Loads the voice for [langCode] ahead of its first message (the peer announced its language). */
+    suspend fun preload(langCode: Int) {}
 }
 
 interface Prepared {

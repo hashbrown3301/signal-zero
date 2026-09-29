@@ -92,7 +92,9 @@ class Packet(
             return Packet(PacketType.ACK, of.seq, of.langCode, of.timestamp, body)
         }
 
-        fun ping(seq: Int, timestamp: Long) = Packet(PacketType.PING, seq, Language.HINDI, timestamp)
+        /** [language] is the sender's own language, so the receiver can load that voice before the first message. */
+        fun ping(seq: Int, timestamp: Long, language: Language = Language.HINDI) =
+            Packet(PacketType.PING, seq, language, timestamp)
 
         fun pong(of: Packet) = Packet(PacketType.PONG, of.seq, of.langCode, of.timestamp)
 

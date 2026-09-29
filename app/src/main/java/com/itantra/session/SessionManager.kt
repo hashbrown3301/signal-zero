@@ -140,6 +140,8 @@ class SessionManager(
 
     private val pingSentAt = ConcurrentHashMap<Int, Long>()
     private var nextPingSeq = 0
+    /** Language code the peer's PINGs announced and whose voice was preloaded; -1 = none yet on this connection. */
+    @Volatile private var preloadedLang = -1
     private val rttSamples = ArrayDeque<Long>() // guarded by itself
 
     fun start() {
@@ -151,6 +153,7 @@ class SessionManager(
                     if (link !is LinkState.Connected) {
                         resetRtt()
                         failPending()
+                        preloadedLang = -1 // the next peer may speak another language
                     }
                     _state.update {
                         it.copy(
@@ -172,7 +175,7 @@ class SessionManager(
             val now = clock()
             pingSentAt[seq] = now
             pingSentAt.entries.removeIf { now - it.value > PING_TIMEOUT_MS } // lost PONGs
-            runCatching { transport.send(Packet.ping(seq, now)) }
+            runCatching { transport.send(Packet.ping(seq, now, language)) }
             delay(pingIntervalMs)
         }
     }
@@ -295,7 +298,13 @@ class SessionManager(
                 )
                 playQueue.send(Playback.Remote(p, id, clock()))
             }
-            PacketType.PING -> runCatching { transport?.send(Packet.pong(of = p)) }
+            PacketType.PING -> {
+                runCatching { transport?.send(Packet.pong(of = p)) }
+                if (p.langCode != preloadedLang) {
+                    preloadedLang = p.langCode
+                    scope.launch { runCatching { speaker.preload(p.langCode) } }
+                }
+            }
             PacketType.ACK -> pending.remove(p.seq)?.let { sent ->
                 val after = clock() - sent.releasedAt
                 val rtt = _state.value.rttMs

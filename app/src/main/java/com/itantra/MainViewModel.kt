@@ -38,6 +38,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -220,12 +222,16 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     stt = null
                     voiceLock.withLock { voices.clear() }
 
-                    val t = SystemClock.elapsedRealtime()
                     val speak = packRepo.find(iso, PackManifest.KIND_SPEAK) ?: error("No speak pack installed for $iso")
-                    stt = factory.stt(speak)
-                    Log.i(TAG, "STT ${speak.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
-                    // Preload this language's voice so the first Solo reply is quick (loaded lazily otherwise).
-                    Language.fromIso(iso)?.let { voiceLock.withLock { voices.get(it.code) } }
+                    coroutineScope {
+                        // Preload this language's voice so the first Solo reply is quick; it loads alongside the STT
+                        // (independent native loads), so switching costs about max(STT, voice) instead of the sum.
+                        val voice = async { Language.fromIso(iso)?.let { voiceLock.withLock { voices.get(it.code) } } }
+                        val t = SystemClock.elapsedRealtime()
+                        stt = factory.stt(speak)
+                        Log.i(TAG, "STT ${speak.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
+                        voice.await()
+                    }
                     SystemClock.elapsedRealtime() - start
                 }
             }

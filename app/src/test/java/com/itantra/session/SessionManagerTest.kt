@@ -55,6 +55,10 @@ class SessionManagerTest {
         private val voices: Set<Int> = setOf(Language.HINDI.code),
     ) : Speaker {
         val played: MutableList<String> = Collections.synchronizedList(mutableListOf())
+        val preloaded: MutableList<Int> = Collections.synchronizedList(mutableListOf())
+        override suspend fun preload(langCode: Int) {
+            preloaded += langCode
+        }
         override suspend fun prepare(text: String, langCode: Int): Prepared? =
             if (langCode !in voices) null else object : Prepared {
                 override val synthMs = this@FakeSpeaker.synthMs
@@ -157,6 +161,25 @@ class SessionManagerTest {
         assertEquals(77, pong.seq)
         assertTrue("PONG took $waitedMs ms", waitedMs < 500)
         assertTrue(sm.state.value.speaking)
+    }
+
+    @Test
+    fun peerPingPreloadsItsVoiceOnce() = test {
+        val speaker = FakeSpeaker()
+        val (_, peer) = session(speaker = speaker)
+
+        peer.send(Packet.ping(seq = 1, timestamp = 0, language = Language.TAMIL))
+        peer.send(Packet.ping(seq = 2, timestamp = 0, language = Language.TAMIL))
+        peer.incoming.first { it.type == PacketType.PONG && it.seq == 2 }
+        withTimeout(1_000) { while (speaker.preloaded.isEmpty()) delay(10) }
+        delay(100)
+        assertEquals(listOf(Language.TAMIL.code), speaker.preloaded.toList())
+    }
+
+    @Test
+    fun pingsCarryThisPhonesLanguage() = test {
+        val (_, peer) = session(pingIntervalMs = 50, language = Language.GUJARATI)
+        assertEquals(Language.GUJARATI, peer.incoming.first { it.type == PacketType.PING }.language)
     }
 
     @Test

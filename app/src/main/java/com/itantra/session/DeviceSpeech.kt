@@ -62,4 +62,8 @@ class DeviceSpeaker(private val voiceLock: Mutex, private val voiceFor: (Int) ->
             override suspend fun play() = tts.play(audio)
         }
     }
+
+    override suspend fun preload(langCode: Int) {
+        withContext(Dispatchers.Default) { voiceLock.withLock { voiceFor(langCode) } }
+    }
 }
