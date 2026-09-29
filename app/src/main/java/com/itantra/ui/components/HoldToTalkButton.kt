@@ -1,5 +1,6 @@
 package com.itantra.ui.components
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,11 +18,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -29,13 +32,17 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.itantra.ui.theme.Motion
 import com.itantra.ui.theme.Palette
 import kotlin.math.PI
 import kotlin.math.abs
@@ -50,7 +57,8 @@ enum class TalkButtonState { Idle, Listening, Processing, NoLink }
  * with a turning arc; NoLink = dashed outline, crossed-out mic.
  *
  * [onPressStart] runs on touch-down and returns whether talking started (false e.g. after asking for the mic
- * permission); only then is [onPressEnd] called when the finger lifts.
+ * permission); only then is [onPressEnd] called when the finger lifts. The disc eases down under the finger at
+ * once (before the session reports Listening), and a haptic tick marks both the start and the end of talking.
  */
 @Composable
 fun HoldToTalkButton(
@@ -63,7 +71,11 @@ fun HoldToTalkButton(
     val start by rememberUpdatedState(onPressStart)
     val end by rememberUpdatedState(onPressEnd)
     val pressable = state == TalkButtonState.Idle || state == TalkButtonState.Listening
-    val scale by animateFloatAsState(if (state == TalkButtonState.Listening) 0.94f else 1f, label = "talk-scale")
+    val haptics = LocalHapticFeedback.current
+    var held by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        if (held || state == TalkButtonState.Listening) 0.94f else 1f, Motion.snappy(), label = "talk-scale",
+    )
 
     Box(
         contentAlignment = Alignment.Center,
@@ -76,23 +88,37 @@ fun HoldToTalkButton(
             .pointerInput(pressable) {
                 if (!pressable) return@pointerInput
                 detectTapGestures(onPress = {
-                    if (start()) {
-                        tryAwaitRelease()
-                        end()
+                    held = true
+                    try {
+                        if (start()) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            tryAwaitRelease()
+                            held = false
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            end()
+                        }
+                    } finally {
+                        held = false
                     }
                 })
             },
     ) {
-        when (state) {
-            TalkButtonState.Listening -> LevelRing()
-            TalkButtonState.Processing -> TurningArc()
-            else -> Unit
+        Crossfade(state, animationSpec = Motion.enter(), label = "talk-ring") { s ->
+            when (s) {
+                TalkButtonState.Listening -> LevelRing()
+                TalkButtonState.Processing -> TurningArc()
+                else -> Box(Modifier.fillMaxSize())
+            }
         }
-        val disc = Modifier.size(128.dp).scale(scale).clip(CircleShape)
-        when (state) {
+        val disc = Modifier.size(128.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape)
+        // Idle and Listening share one opaque disc (cross-fading two would dim it mid-fade); only the icon swaps.
+        val discKind = if (state == TalkButtonState.Listening) TalkButtonState.Idle else state
+        Crossfade(discKind, animationSpec = Motion.enter(), label = "talk-disc") { s -> when (s) {
             TalkButtonState.Idle, TalkButtonState.Listening ->
                 Box(disc.background(Palette.Accent), contentAlignment = Alignment.Center) {
-                    if (state == TalkButtonState.Idle) MicIcon(Palette.NavyDeep, 44.dp) else WaveIcon(Palette.NavyDeep)
+                    Crossfade(state == TalkButtonState.Listening, animationSpec = Motion.enter(), label = "talk-icon") { listening ->
+                        if (listening) WaveIcon(Palette.NavyDeep) else MicIcon(Palette.NavyDeep, 44.dp)
+                    }
                 }
             TalkButtonState.Processing ->
                 Box(disc.background(Palette.TealDark).border(1.5.dp, Palette.Accent, CircleShape), contentAlignment = Alignment.Center) {
@@ -108,7 +134,7 @@ fun HoldToTalkButton(
                     }
                     MicIcon(Palette.TextFaint, 44.dp, crossed = true)
                 }
-        }
+        } }
     }
 }
 

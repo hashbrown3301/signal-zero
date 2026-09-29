@@ -40,6 +40,13 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
     - [ ] Part 2: Languages screen (all 10 in their own scripts; select, download, delete; replaces the Home dropdown and the old packs screen)
   - [ ] D (later, separate steps): Phone mode, Alert, Metrics screen
 
+- [ ] **Quality pass (2026-09-29)**: audit + fixes, latency, wire v2, UI motion. All PC tests pass; **not yet run on a phone**.
+  - [x] Bugs: engines released mid-call on exit or pack delete (now `engineLock` for VAD/STT, `voiceLock` for voices; deleting the speak pack in use is refused during a session), socket fd leak per failed reconnect, messages stuck at SENT, cancellation reported as failures, packs with mismatched `lang`/`packet_code`, overlapping pack installs.
+  - [x] Latency: PING carries the sender's language, the receiver preloads that voice once per connection; STT and own voice load in parallel.
+  - [x] **Wire v2** (`PacketCodec.VERSION = 2`, still reads v1; **old builds can't read v2, update every phone**): `comm/IndicPack` packs Indian-script text at 1 byte/char (20-word Hindi sentence 261 → 111 B on the wire), ACK 8 → 4 B payload; unacked messages are resent after a reconnect within 30 s, receivers drop duplicates (seq + timestamp) and repeat the ACK. Fuzz tests on the decoders.
+  - [x] UI motion (same layout/UX, Manrope kept): `ui/theme/Motion.kt` (springs, fades, `pressScale`), animated tabs/bottom nav, haptics on hold-to-talk and tab switch, cross-fading states, animated list items, background wash. Infinite animations only while visible.
+  - [ ] On-device check (S25 + A03 Core): talk flow, exit during STT, pack delete in session, reconnect resend, first-message latency in a new language, UI smoothness on the A03 Core.
+
 **Pending test day** (all tooling ready): Phase 1+2 exit run (10 sentences each way, Wi-Fi + Bluetooth, `summarize_benchmarks.py`), Phase 3 steps 8–9, and the step 6 leftovers (install prompt, int8 Hindi voice on the A03 Core).
 
 ## Rules
@@ -57,7 +64,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - `audio/AudioRecorder.kt`: 16 kHz mono capture
   - `speech/VadTrimmer.kt`, `SttEngine.kt`, `TtsEngine.kt`, `AssetCopier.kt`: sherpa-onnx wrappers
   - `packs/`: `PackManifest` (pack.json), `PackStore` (install/verify/delete, plain Kotlin), `PackRepository` (Android: built-in, sideload, import)
-  - `comm/`: `Packet`, `PacketCodec` (17 B overhead + CRC32), `FramedStream` (shared framing), `Transport`, `TcpTransport`, `LocalAddresses` (plain Kotlin, no Android)
+  - `comm/`: `Packet`, `PacketCodec` (wire v2: 17 B overhead + CRC32), `IndicPack` (1 byte/char Indian-script text), `FramedStream` (shared framing), `Transport`, `TcpTransport`, `LocalAddresses` (plain Kotlin, no Android)
   - `session/SessionManager.kt`: the only place speech meets the network (queue while talking, ACKs, PING/RTT)
 - `app/src/test/`: JUnit for codec, TCP transport and SessionManager (`gradlew testDebugUnitTest`, runs on the PC)
 - `scripts/fetch_models.py`: downloads the sherpa-onnx AAR and all models, and patches the STT model with sherpa-onnx metadata
@@ -73,7 +80,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 
 ```
 .venv\Scripts\python.exe scripts\fetch_models.py      # one-time: AAR + models
-$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:JAVA_HOME="C:\Program Files\Java\jdk-17"          # the Android Studio jbr path doesn't exist on this PC
 .\gradlew.bat assembleDebug
 adb install -r app\build\outputs\apk\debug\app-arm64-v8a-debug.apk   # per-CPU APKs; A03 Core: app-armeabi-v7a-debug.apk
 adb logcat -s iTantra:* AndroidRuntime:E

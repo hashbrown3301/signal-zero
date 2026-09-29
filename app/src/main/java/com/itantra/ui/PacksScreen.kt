@@ -4,39 +4,62 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.itantra.MainViewModel
+import com.itantra.R
 import com.itantra.packs.CatalogEntry
 import com.itantra.packs.PackManifest
+import com.itantra.ui.components.SecondaryButton
+import com.itantra.ui.theme.Motion
+import com.itantra.ui.theme.Palette
+import com.itantra.ui.theme.pressScale
 
 /**
  * Every language iTantra supports, with a speak and a listen pack each: built in, installed (Delete),
  * downloading (progress + Cancel) or available (Download). Sideloading and file import stay available offline.
+ *
+ * Motion and cost: rows animate into place, a pack's state (installed, downloading, available) cross-fades, and
+ * the progress bar glides between the throttled updates. A progress tick only changes one language's [PackRow], so
+ * only that card recomposes; the other cards compare equal and are skipped.
  */
 @Composable
 fun PacksScreen(
@@ -54,74 +77,104 @@ fun PacksScreen(
         if (uri != null) onImport(uri)
     }
     // Ask before a big download on mobile data; on Wi-Fi just start.
-    var confirm by remember { mutableStateOf<Pair<String, CatalogEntry>?>(null) }
-    fun requestDownload(id: String, entry: CatalogEntry) {
-        val metered = context.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered ?: true
-        if (metered) confirm = id to entry else onDownload(id)
-    }
-    confirm?.let { (id, entry) ->
+    val confirm = remember { mutableStateOf<Pair<String, CatalogEntry>?>(null) }
+    confirm.value?.let { (id, entry) ->
         AlertDialog(
-            onDismissRequest = { confirm = null },
+            onDismissRequest = { confirm.value = null },
             title = { Text("Download on mobile data?") },
             text = { Text("${entry.name} ${entry.kind} is %.0f MB. Wi-Fi is recommended.".format(entry.zipSize / 1e6)) },
-            confirmButton = { TextButton(onClick = { confirm = null; onDownload(id) }) { Text("Download") } },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = { confirm.value = null; onDownload(id) }) { Text("Download") } },
+            dismissButton = { TextButton(onClick = { confirm.value = null }) { Text("Cancel") } },
         )
     }
 
-    val builtInIds = packs.builtIn.map { it.id }.toSet()
-    val onPhone = (packs.builtIn + packs.installed).associateBy { it.id }
-    val catalogById = packs.catalog.toMap()
+    val builtInIds = remember(packs.builtIn) { packs.builtIn.map { it.id }.toSet() }
+    val onPhone = remember(packs.builtIn, packs.installed) { (packs.builtIn + packs.installed).associateBy { it.id } }
+    val catalogById = remember(packs.catalog) { packs.catalog.toMap() }
     // Languages: everything in the catalogue plus anything installed that the catalogue doesn't know.
-    val languages = (packs.catalog.map { it.second.lang to it.second.packetCode } +
-        onPhone.values.map { it.lang to it.packetCode }).distinct().sortedBy { it.second }.map { it.first }
+    val languages = remember(packs.catalog, onPhone) {
+        (packs.catalog.map { it.second.lang to it.second.packetCode } +
+            onPhone.values.map { it.lang to it.packetCode }).distinct().sortedBy { it.second }.map { it.first }
+    }
     val downloading = packs.downloads.any { it.value.error == null }
+    val requestDownload = remember<(String) -> Unit>(catalogById, context, onDownload) {
+        { id ->
+            val entry = catalogById[id]
+            if (entry != null) {
+                val metered = context.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered ?: true
+                if (metered) confirm.value = id to entry else onDownload(id)
+            }
+        }
+    }
+    // The last message stays drawn while it fades out.
+    val lastMessage = rememberLastNonNull(packs.message?.let { it to packs.messageIsError })
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← Back") }
+            TextButton(onClick = onBack) {
+                Icon(painterResource(R.drawable.ic_chevron_down), null, Modifier.size(16.dp).rotate(90f))
+                Text("Back", modifier = Modifier.padding(start = 4.dp))
+            }
             Text("Language packs", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
         Text(
             "Speak = understand your speech in that language. Listen = hear that language spoken. " +
                 "Downloaded once, then they work offline.",
             style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp),
         )
-        if (packs.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        packs.message?.let {
-            Text(
-                it,
-                color = if (packs.messageIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyMedium,
-            )
+        // Busy bar and message ease in and out (padding lives inside, so nothing is reserved while they're hidden).
+        Column {
+            AnimatedVisibility(packs.busy, enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()), exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle())) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+            }
+            AnimatedVisibility(packs.message != null, enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()), exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle())) {
+                lastMessage?.let { (text, isError) ->
+                    Text(
+                        text,
+                        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
         }
 
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             items(languages, key = { it }) { lang ->
-                val rows = listOf(PackManifest.KIND_SPEAK, PackManifest.KIND_LISTEN).map { kind ->
-                    val id = "$lang-$kind"
-                    PackRow(kind, onPhone[id], id in builtInIds, catalogById[id], packs.downloads[id])
-                }
-                LanguageCard(lang, rows, packs.busy, downloading,
+                val speak = packRow(lang, PackManifest.KIND_SPEAK, onPhone, builtInIds, catalogById, packs.downloads)
+                val listen = packRow(lang, PackManifest.KIND_LISTEN, onPhone, builtInIds, catalogById, packs.downloads)
+                LanguageCard(
+                    lang, speak, listen, packs.busy, downloading,
                     onDelete = onDelete,
-                    onDownload = { id -> catalogById[id]?.let { requestDownload(id, it) } },
-                    onCancel = onCancelDownload)
+                    onDownload = requestDownload,
+                    onCancel = onCancelDownload,
+                    modifier = Modifier.animateItem(fadeInSpec = Motion.enter(), placementSpec = Motion.gentle(), fadeOutSpec = Motion.exit()),
+                )
             }
-            item {
-                Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item(key = "without-internet") {
+                Column(
+                    Modifier
+                        .padding(vertical = 8.dp)
+                        .animateItem(fadeInSpec = Motion.enter(), placementSpec = Motion.gentle(), fadeOutSpec = Motion.exit()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text("Without internet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        OutlinedButton(
+                        SecondaryButton(
                             onClick = { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
                             enabled = !packs.busy,
                             modifier = Modifier.weight(1f),
                         ) { Text("Import pack…") }
-                        OutlinedButton(onClick = onRescan, enabled = !packs.busy, modifier = Modifier.weight(1f)) {
+                        SecondaryButton(onClick = onRescan, enabled = !packs.busy, modifier = Modifier.weight(1f)) {
                             Text("Check sideloaded")
                         }
                     }
@@ -130,15 +183,27 @@ fun PacksScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    TextButton(onClick = onRefreshCatalog, enabled = !packs.busy && !downloading) {
-                        Text("Check for new packs (internet)")
-                    }
+                    PackAction("Check for new packs (internet)", filled = false, enabled = !packs.busy && !downloading, onClick = onRefreshCatalog)
                 }
             }
         }
     }
 }
 
+private fun packRow(
+    lang: String,
+    kind: String,
+    onPhone: Map<String, PackManifest>,
+    builtInIds: Set<String>,
+    catalogById: Map<String, CatalogEntry>,
+    downloads: Map<String, MainViewModel.DownloadUi>,
+): PackRow {
+    val id = "$lang-$kind"
+    return PackRow(kind, onPhone[id], id in builtInIds, catalogById[id], downloads[id])
+}
+
+/** Compared by value, so a card whose pack hasn't changed is skipped when another card's progress ticks. */
+@Immutable
 private data class PackRow(
     val kind: String,
     val installed: PackManifest?,
@@ -147,59 +212,156 @@ private data class PackRow(
     val download: MainViewModel.DownloadUi?,
 )
 
+private enum class Phase { BuiltIn, Installed, Downloading, Available, Unavailable }
+
+/** What one pack line shows. [phase] is the cross-fade key; the rest may change without a cross-fade (progress ticks). */
+@Immutable
+private data class Line(
+    val phase: Phase,
+    val status: String,
+    val progress: Float,
+    val indeterminate: Boolean,
+    val error: String?,
+    val retry: Boolean,
+    val busy: Boolean,
+    val anyDownloading: Boolean,
+)
+
+private fun PackRow.toLine(busy: Boolean, anyDownloading: Boolean): Line {
+    val d = download
+    val downloading = d != null && d.error == null
+    val phase = when {
+        installed != null -> if (builtIn) Phase.BuiltIn else Phase.Installed
+        downloading -> Phase.Downloading
+        available != null -> Phase.Available
+        else -> Phase.Unavailable
+    }
+    val status = when {
+        installed != null -> "%.1f MB · %s".format(installed.size / 1e6, if (builtIn) "built in" else "installed")
+        d != null && downloading && d.total > 0 -> "Downloading %.0f of %.0f MB".format(d.downloaded / 1e6, d.total / 1e6)
+        downloading -> "Starting download…"
+        available != null -> "Not installed · %.0f MB download".format(available.zipSize / 1e6)
+        else -> "Not available"
+    }
+    return Line(
+        phase = phase,
+        status = status,
+        progress = if (d != null && d.total > 0) (d.downloaded.toFloat() / d.total).coerceIn(0f, 1f) else 0f,
+        indeterminate = d == null || d.total <= 0,
+        error = d?.error,
+        retry = d?.error != null,
+        busy = busy,
+        anyDownloading = anyDownloading,
+    )
+}
+
 @Composable
 private fun LanguageCard(
     lang: String,
-    rows: List<PackRow>,
+    speak: PackRow,
+    listen: PackRow,
+    busy: Boolean,
+    anyDownloading: Boolean,
+    onDelete: (String) -> Unit,
+    onDownload: (String) -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val any = listOf(speak, listen).firstNotNullOfOrNull {
+        it.installed?.let { m -> m.native to m.name } ?: it.available?.let { e -> e.native to e.name }
+    }
+    Card(modifier = modifier.fillMaxWidth()) {
+        // A row gaining a progress bar or an error line eases the card taller instead of jumping.
+        Column(Modifier.padding(12.dp).animateContentSize(Motion.gentle()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(any?.let { "${it.first} · ${it.second}" } ?: lang, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            for (row in listOf(speak, listen)) {
+                PackLine("$lang-${row.kind}", row, busy, anyDownloading, onDelete, onDownload, onCancel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PackLine(
+    id: String,
+    row: PackRow,
     busy: Boolean,
     anyDownloading: Boolean,
     onDelete: (String) -> Unit,
     onDownload: (String) -> Unit,
     onCancel: () -> Unit,
 ) {
-    val any = rows.firstNotNullOfOrNull { it.installed?.let { m -> m.native to m.name } ?: it.available?.let { e -> e.native to e.name } }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(any?.let { "${it.first} · ${it.second}" } ?: lang, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            for (row in rows) {
-                val id = "$lang-${row.kind}"
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
-                            Text(if (row.kind == PackManifest.KIND_SPEAK) "Speak" else "Listen", fontWeight = FontWeight.Medium)
-                            Text(
-                                when {
-                                    row.installed != null -> "%.1f MB · %s".format(row.installed.size / 1e6,
-                                        if (row.builtIn) "built in" else "installed")
-                                    row.download != null && row.download.error == null && row.download.total > 0 ->
-                                        "Downloading %.0f of %.0f MB".format(row.download.downloaded / 1e6, row.download.total / 1e6)
-                                    row.download != null && row.download.error == null -> "Starting download…"
-                                    row.available != null -> "Not installed · %.0f MB download".format(row.available.zipSize / 1e6)
-                                    else -> "Not available"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        when {
-                            row.installed != null && !row.builtIn ->
-                                TextButton(onClick = { onDelete(id) }, enabled = !busy) { Text("Delete") }
-                            row.download != null && row.download.error == null ->
-                                TextButton(onClick = onCancel) { Text("Cancel") }
-                            row.installed == null && row.available != null ->
-                                Button(onClick = { onDownload(id) }, enabled = !busy && !anyDownloading) {
-                                    Text(if (row.download?.error != null) "Retry" else "Download")
-                                }
-                        }
-                    }
-                    val d = row.download
-                    if (d != null && d.error == null) {
-                        if (d.total > 0) LinearProgressIndicator(progress = { d.downloaded.toFloat() / d.total }, modifier = Modifier.fillMaxWidth())
-                        else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    }
-                    d?.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+    val line = row.toLine(busy, anyDownloading)
+    // Kept while the bar / error fades out, when the live values are already gone.
+    val bar = rememberLastNonNull(if (line.phase == Phase.Downloading) line.progress to line.indeterminate else null)
+    val error = rememberLastNonNull(line.error)
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f)) {
+                Text(if (row.kind == PackManifest.KIND_SPEAK) "Speak" else "Listen", fontWeight = FontWeight.Medium)
+                HeldFadeSwap(line.phase, line, label = "pack-status") { _, l ->
+                    Text(l.status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            HeldFadeSwap(line.phase, line, contentAlignment = Alignment.CenterEnd, label = "pack-action") { phase, l ->
+                when (phase) {
+                    Phase.Installed -> PackAction("Delete", filled = false, enabled = !l.busy) { onDelete(id) }
+                    Phase.Downloading -> PackAction("Cancel", filled = false, enabled = true, onClick = onCancel)
+                    Phase.Available -> PackAction(if (l.retry) "Retry" else "Download", filled = true, enabled = !l.busy && !l.anyDownloading) { onDownload(id) }
+                    Phase.BuiltIn, Phase.Unavailable -> Unit
                 }
             }
         }
+        AnimatedVisibility(
+            line.phase == Phase.Downloading,
+            enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()),
+            exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle()),
+        ) {
+            bar?.let { (progress, indeterminate) -> DownloadBar(progress, indeterminate) }
+        }
+        AnimatedVisibility(
+            line.error != null,
+            enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()),
+            exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle()),
+        ) {
+            Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+/**
+ * Progress updates arrive a few times a second; the bar glides linearly to each one. The animated value is read
+ * inside the progress lambda, so a frame redraws the bar and recomposes nothing.
+ */
+@Composable
+private fun DownloadBar(progress: Float, indeterminate: Boolean) {
+    if (indeterminate) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    } else {
+        val shown = animateFloatAsState(progress, tween(300, easing = LinearEasing), label = "download-progress")
+        LinearProgressIndicator(progress = { shown.value }, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** Small action inside a card: Delete / Cancel (text) or Download / Retry (teal fill); eases down while pressed. */
+@Composable
+private fun PackAction(label: String, filled: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    if (filled) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier.pressScale(interaction),
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Palette.Accent,
+                contentColor = Palette.NavyDeep,
+                disabledContainerColor = Palette.Line,
+                disabledContentColor = Palette.TextFaint,
+            ),
+            elevation = null,
+            interactionSource = interaction,
+        ) { Text(label) }
+    } else {
+        TextButton(onClick = onClick, modifier = Modifier.pressScale(interaction), enabled = enabled, interactionSource = interaction) { Text(label) }
     }
 }

@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,7 @@ import com.itantra.ui.theme.Palette
 /**
  * The iTantra mark: a ring (the network), two nodes (the two phones: this one filled, the other hollow), a voice
  * pulse between them and, from 48 dp up, two faint yantra triangles. Drawn on a 48-unit grid like the design's SVG.
+ * Static: one Canvas, redrawn only when its size changes, nothing animated.
  */
 @Composable
 fun ITantraMark(size: Dp, modifier: Modifier = Modifier, detailed: Boolean = size >= 48.dp) {
@@ -63,11 +65,14 @@ fun ITantraMark(size: Dp, modifier: Modifier = Modifier, detailed: Boolean = siz
 /** "iTantra" with a teal i. */
 @Composable
 fun Wordmark(style: TextStyle, modifier: Modifier = Modifier) {
-    Text(
+    val text = remember {
         buildAnnotatedString {
             withStyle(SpanStyle(color = Palette.Accent)) { append("i") }
             append("Tantra")
-        },
+        }
+    }
+    Text(
+        text,
         style = style,
         color = Palette.OffWhite,
         modifier = modifier,
@@ -81,7 +86,7 @@ fun BrandBar(modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ITantraMark(24.dp)
             Wordmark(MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), Modifier.weight(1f))
@@ -94,7 +99,7 @@ fun BrandBar(modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {
 /** Home screen header: mark, wordmark and tagline. */
 @Composable
 fun BrandHeader(modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         ITantraMark(52.dp)
         Column(Modifier.weight(1f)) {
             Wordmark(MaterialTheme.typography.headlineMedium)

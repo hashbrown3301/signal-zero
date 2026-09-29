@@ -1,8 +1,12 @@
 package com.itantra.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +30,7 @@ import com.itantra.MainViewModel.Mode
 import com.itantra.ui.components.BottomNav
 import com.itantra.ui.components.Tab
 import com.itantra.ui.components.brandBackdrop
+import com.itantra.ui.theme.Motion
 import com.itantra.ui.theme.Palette
 
 /**
@@ -66,8 +71,16 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             .brandBackdrop()
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when (tab) {
+        // Tabs cross-fade, the incoming one settling in from 98 %; drawn in a layer, so no relayout per frame.
+        AnimatedContent(
+            targetState = tab,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            transitionSpec = {
+                (fadeIn(Motion.enter()) + scaleIn(Motion.enter(), initialScale = 0.98f)) togetherWith fadeOut(Motion.exit())
+            },
+            label = "tab",
+        ) { shown ->
+            when (shown) {
                 Tab.Home -> HomeScreen(
                     ui,
                     onStart = { mode, peer, link, name -> viewModel.startSession(mode, peer, link, name) },

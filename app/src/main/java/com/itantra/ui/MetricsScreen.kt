@@ -1,8 +1,15 @@
 package com.itantra.ui
 
 import android.os.Debug
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,10 +21,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.itantra.MainViewModel
@@ -36,21 +46,20 @@ import kotlinx.coroutines.withContext
 /**
  * Metrics as an editorial table: latency percentiles from this session's messages, link sizes, this phone's memory
  * and model sizes, and the per-language accuracy measured in CI. A value the app doesn't have yet shows "–".
+ *
+ * Cost: the percentiles are computed once per new message (not per recomposition), every row takes plain strings so
+ * it is skipped when its numbers didn't change, and RAM is read in its own section so its 5 s tick recomposes only that.
  */
 @Composable
 fun MetricsScreen(ui: MainViewModel.UiState) {
     val messages = ui.session.messages
-    val outgoing = messages.filter { it.direction == Direction.OUTGOING }
-    // This app's memory (PSS), refreshed every few seconds.
-    val pssMb by produceState<Long?>(null) {
-        while (true) {
-            value = withContext(Dispatchers.IO) { Debug.getPss() / 1024 }
-            delay(5_000)
-        }
-    }
+    val rttMs = ui.session.rttMs
+    val stats = remember(messages, rttMs) { computeStats(messages, rttMs) }
     val onPhone = ui.packs.builtIn + ui.packs.installed
     val speak = onPhone.firstOrNull { it.lang == ui.myLanguage && it.kind == PackManifest.KIND_SPEAK }
     val listen = onPhone.firstOrNull { it.lang == ui.myLanguage && it.kind == PackManifest.KIND_LISTEN }
+    val linkLabel = if (ui.mode == null || ui.mode == MainViewModel.Mode.SOLO) null else ui.linkTypeLabel()
+    val language = englishName(ui.myLanguage)
 
     Column(Modifier.fillMaxSize()) {
         BrandBar()
@@ -58,7 +67,7 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 22.dp),
+                .padding(horizontal = 20.dp, vertical = 24.dp),
         ) {
             Text("Metrics", style = MaterialTheme.typography.headlineLarge)
             Text(
@@ -66,48 +75,81 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
                 style = DataText, color = Palette.TextMuted, modifier = Modifier.padding(top = 8.dp),
             )
 
-            Section("Latency", "p50", "p90")
-            PercentileRow("Round trip (RTT)", outgoing.mapNotNull { it.rttMs } + listOfNotNull(ui.session.rttMs))
-            PercentileRow("Release → heard", outgoing.mapNotNull { it.endToEndMs })
-            PercentileRow("Speech → text", messages.filter { it.direction != Direction.INCOMING }.mapNotNull { it.sttMs })
-            PercentileRow("Text → voice", messages.filter { it.direction != Direction.OUTGOING }.mapNotNull { it.ttsMs })
-            Note("From this session's messages on this phone. Talk a few times to fill these in.")
-
-            Section("Link")
-            val sizes = messages.mapNotNull { it.wireBytes }
-            ValueRow("Text sent per sentence", sizes.takeIf { it.isNotEmpty() }?.let { "${it.min()}–${it.max()} B" })
-            ValueRow("Same sentences as audio", audioRange(messages))
-            ValueRow("Packet overhead", "17 B + CRC32")
-            ValueRow("Link", if (ui.mode == null || ui.mode == MainViewModel.Mode.SOLO) null else ui.linkTypeLabel())
-
-            Section("Phone")
-            ValueRow("RAM used by iTantra", pssMb?.let { "$it MB" })
-            ValueRow("Speech model, ${englishName(ui.myLanguage)}", speak?.let { "%.1f MB".format(it.size / 1e6) })
-            ValueRow("Voice, ${englishName(ui.myLanguage)}", listen?.let { "%.1f MB".format(it.size / 1e6) })
-
-            Section("Accuracy", "CER", "WER")
-            ACCURACY.forEach { (iso, cer, wer) ->
-                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        Text(nativeName(iso), fontFamily = scriptFont(iso), style = MaterialTheme.typography.bodyLarge)
-                        Text("  " + englishName(iso), style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
-                    }
-                    Cell(cer, Palette.OffWhite)
-                    Cell(wer, Palette.TextMuted)
-                }
-                Rule()
+            FadeInSection(0) {
+                Section("Latency", "p50", "p90")
+                PercentileRow("Round trip (RTT)", stats.rtt)
+                PercentileRow("Release → heard", stats.heard)
+                PercentileRow("Speech → text", stats.stt)
+                PercentileRow("Text → voice", stats.tts)
+                Note("From this session's messages on this phone. Talk a few times to fill these in.")
             }
-            Note(
-                "Character / word error rate on 3 FLEURS test clips per language, measured when the packs were built; " +
-                    "lower is better. *Tamil: one clip had numbers spoken as words; 19.8% CER over 10 clips.",
-            )
+
+            FadeInSection(1) {
+                Section("Link")
+                ValueRow("Text sent per sentence", stats.textSize)
+                ValueRow("Same sentences as audio", stats.audioSize)
+                ValueRow("Packet overhead", "17 B + CRC32")
+                ValueRow("Link", linkLabel)
+            }
+
+            FadeInSection(2) {
+                PhoneSection(language, speak?.let { "%.1f MB".format(it.size / 1e6) }, listen?.let { "%.1f MB".format(it.size / 1e6) })
+            }
+
+            FadeInSection(3) { AccuracyTable() }
         }
     }
 }
 
+/** Fades in once when the screen first shows, each section a beat after the one above. Nothing on exit. */
+@Composable
+private fun FadeInSection(index: Int, content: @Composable ColumnScope.() -> Unit) {
+    val visible = remember { MutableTransitionState(false).apply { targetState = true } }
+    AnimatedVisibility(
+        visibleState = visible,
+        enter = fadeIn(tween(220, delayMillis = index * 40, easing = EaseOutCubic)),
+        exit = ExitTransition.None,
+    ) { Column(content = content) }
+}
+
+/** This phone's memory (PSS), refreshed every few seconds; only this section recomposes when it changes. */
+@Composable
+private fun PhoneSection(language: String, speakSize: String?, voiceSize: String?) {
+    val pssMb by produceState<Long?>(null) {
+        while (true) {
+            value = withContext(Dispatchers.IO) { Debug.getPss() / 1024 }
+            delay(5_000)
+        }
+    }
+    Section("Phone")
+    ValueRow("RAM used by iTantra", pssMb?.let { "$it MB" })
+    ValueRow("Speech model, $language", speakSize)
+    ValueRow("Voice, $language", voiceSize)
+}
+
+@Composable
+private fun AccuracyTable() {
+    Section("Accuracy", "CER", "WER")
+    ACCURACY.forEach { (iso, cer, wer) ->
+        Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(nativeName(iso), fontFamily = scriptFont(iso), style = MaterialTheme.typography.bodyLarge)
+                Text("  " + englishName(iso), style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+            }
+            Cell(cer, Palette.OffWhite)
+            Cell(wer, Palette.TextMuted)
+        }
+        Rule()
+    }
+    Note(
+        "Character / word error rate on 3 FLEURS test clips per language, measured when the packs were built; " +
+            "lower is better. *Tamil: one clip had numbers spoken as words; 19.8% CER over 10 clips.",
+    )
+}
+
 @Composable
 private fun Section(title: String, col1: String? = null, col2: String? = null) {
-    Column(Modifier.padding(top = 30.dp)) {
+    Column(Modifier.padding(top = 32.dp)) {
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
             Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = Palette.Mint, modifier = Modifier.weight(1f))
             col1?.let { Cell(it, Palette.Mint) }
@@ -118,33 +160,71 @@ private fun Section(title: String, col1: String? = null, col2: String? = null) {
 }
 
 @Composable
-private fun Cell(text: String, color: androidx.compose.ui.graphics.Color) {
+private fun Cell(text: String, color: Color) {
     Text(text, style = DataText.copy(fontSize = DataText.fontSize * 1.1f), color = color, textAlign = TextAlign.End, modifier = Modifier.width(72.dp))
 }
 
+/** A number that changes while the screen is open (RTT, RAM): the old value fades out as the new one fades in. */
 @Composable
-private fun PercentileRow(label: String, values: List<Long>) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 46.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun LiveValue(text: String, color: Color, modifier: Modifier = Modifier) {
+    FadeSwap(text, modifier, Alignment.CenterEnd, label = "metric-value") { shown ->
+        Text(shown, style = DataText.copy(fontSize = DataText.fontSize * 1.1f), color = color, textAlign = TextAlign.End)
+    }
+}
+
+@Composable
+private fun PercentileRow(label: String, p: Percentiles) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Cell(percentile(values, 50)?.let { "$it ms" } ?: "–", if (values.isEmpty()) Palette.TextMuted else Palette.OffWhite)
-        Cell(percentile(values, 90)?.let { "$it ms" } ?: "–", Palette.TextMuted)
+        LiveValue(p.p50 ?: "–", if (p.p50 == null) Palette.TextMuted else Palette.OffWhite, Modifier.width(72.dp))
+        LiveValue(p.p90 ?: "–", Palette.TextMuted, Modifier.width(72.dp))
     }
     Rule()
 }
 
 @Composable
 private fun ValueRow(label: String, value: String?) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 46.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(value ?: "–", style = DataText.copy(fontSize = DataText.fontSize * 1.1f), color = if (value == null) Palette.TextMuted else Palette.OffWhite)
+        LiveValue(value ?: "–", if (value == null) Palette.TextMuted else Palette.OffWhite)
     }
     Rule()
 }
 
 @Composable
 private fun Note(text: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted, modifier = Modifier.padding(top = 10.dp))
+    Text(text, style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted, modifier = Modifier.padding(top = 8.dp))
 }
+
+/** p50 / p90 already formatted ("120 ms"); null = nothing measured yet. */
+@Immutable
+private data class Percentiles(val p50: String?, val p90: String?)
+
+@Immutable
+private data class Stats(
+    val rtt: Percentiles,
+    val heard: Percentiles,
+    val stt: Percentiles,
+    val tts: Percentiles,
+    val textSize: String?,
+    val audioSize: String?,
+)
+
+private fun computeStats(messages: List<Message>, rttMs: Long?): Stats {
+    val outgoing = messages.filter { it.direction == Direction.OUTGOING }
+    val sizes = messages.mapNotNull { it.wireBytes }
+    return Stats(
+        rtt = percentiles(outgoing.mapNotNull { it.rttMs } + listOfNotNull(rttMs)),
+        heard = percentiles(outgoing.mapNotNull { it.endToEndMs }),
+        stt = percentiles(messages.filter { it.direction != Direction.INCOMING }.mapNotNull { it.sttMs }),
+        tts = percentiles(messages.filter { it.direction != Direction.OUTGOING }.mapNotNull { it.ttsMs }),
+        textSize = sizes.takeIf { it.isNotEmpty() }?.let { "${it.min()}–${it.max()} B" },
+        audioSize = audioRange(messages),
+    )
+}
+
+private fun percentiles(values: List<Long>) =
+    Percentiles(percentile(values, 50)?.let { "$it ms" }, percentile(values, 90)?.let { "$it ms" })
 
 /** Nearest-rank percentile; null when there is nothing to measure. */
 private fun percentile(values: List<Long>, p: Int): Long? {

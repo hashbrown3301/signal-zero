@@ -1,6 +1,7 @@
 package com.itantra.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
@@ -9,11 +10,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.itantra.ui.theme.Palette
+import com.itantra.ui.theme.pressScale
 
-/** Main action (Join, Connect, Download): teal fill, navy text, 52 dp, no shadow. */
+/** Main action (Join, Connect, Download): teal fill, navy text, 52 dp, no shadow; eases down a little when pressed. */
 @Composable
 fun PrimaryButton(
     onClick: () -> Unit,
@@ -21,10 +24,12 @@ fun PrimaryButton(
     enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 52.dp),
+        modifier = modifier.pressScale(interaction).heightIn(min = 52.dp),
+        interactionSource = interaction,
         shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(
             containerColor = Palette.Accent,
@@ -46,10 +51,12 @@ fun SecondaryButton(
     enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 48.dp),
+        modifier = modifier.pressScale(interaction).heightIn(min = 48.dp),
+        interactionSource = interaction,
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(1.dp, if (enabled) Palette.Line else Palette.LineFaint),
         colors = ButtonDefaults.outlinedButtonColors(
