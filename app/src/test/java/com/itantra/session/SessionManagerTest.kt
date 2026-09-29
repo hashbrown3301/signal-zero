@@ -3,6 +3,7 @@ package com.itantra.session
 import com.itantra.comm.Language
 import com.itantra.comm.LinkState
 import com.itantra.comm.Packet
+import com.itantra.comm.PacketCodec
 import com.itantra.comm.PacketType
 import com.itantra.comm.TcpTransport
 import com.itantra.comm.Transport
@@ -110,7 +111,7 @@ class SessionManagerTest {
         assertEquals(Direction.OUTGOING, msg.direction)
         assertEquals(123L, msg.peerTtsMs)
         assertEquals(7L, msg.peerQueueMs)
-        assertEquals(17 + hindi.encodeToByteArray().size, msg.wireBytes)
+        assertEquals(PacketCodec.wireSize(text), msg.wireBytes)
         assertTrue(msg.ackAfterMs!! >= 0)
     }
 
@@ -224,9 +225,10 @@ class SessionManagerTest {
     }
 
     @Test
-    fun linkLostBeforeAckFailsTheMessageAndLateAckIsIgnored() = test {
+    fun linkLostBeforeAckFailsTheMessageAfterTheWindowAndLateAckIsIgnored() = test {
         val fake = FakeTransport()
-        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake, minPressMs = 0, pingIntervalMs = 0)
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake, minPressMs = 0, pingIntervalMs = 0,
+            resendWindowMs = 200)
             .also { it.start() }
         closeables += { sm.close() }
 
@@ -241,6 +243,58 @@ class SessionManagerTest {
         fake.inbox.send(Packet.ack(of = text, ttsMs = 1, queueMs = 0))
         delay(300)
         assertEquals(Status.FAILED, sm.state.value.messages.single().status)
+    }
+
+    @Test
+    fun reconnectWithinTheWindowResendsTheSamePacketAndAckMatchesIt() = test {
+        val fake = FakeTransport()
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake, minPressMs = 0, pingIntervalMs = 0,
+            resendWindowMs = 5_000)
+            .also { it.start() }
+        closeables += { sm.close() }
+
+        sm.talk()
+        val text = fake.sent.single { it.type == PacketType.TEXT }
+
+        fake.state.value = LinkState.Disconnected("gone")
+        sm.state.first { it.link is LinkState.Disconnected }
+        assertEquals(Status.SENT, sm.state.value.messages.single().status) // still waiting, not failed
+
+        fake.state.value = LinkState.Connected("fake")
+        while (fake.sent.count { it.type == PacketType.TEXT } < 2) delay(10)
+        val again = fake.sent.last { it.type == PacketType.TEXT }
+        assertEquals(text.seq, again.seq)
+        assertEquals(text.timestamp, again.timestamp)
+        assertEquals(text.text, again.text)
+
+        fake.inbox.send(Packet.ack(of = text, ttsMs = 1, queueMs = 0))
+        val msg = sm.state.first { it.messages.singleOrNull()?.status == Status.ACKED }.messages.single()
+        assertEquals(1, msg.resends)
+    }
+
+    @Test
+    fun duplicateTextIsPlayedOnceAndAckedAgain() = test {
+        val fake = FakeTransport()
+        val speaker = FakeSpeaker(playMs = 50)
+        val sm = SessionManager(scope, FakeListener(hindi), speaker, fake, minPressMs = 0, pingIntervalMs = 0)
+            .also { it.start() }
+        closeables += { sm.close() }
+
+        val text = Packet.text(9, 1234, hindi)
+        fake.inbox.send(text)
+        sm.state.first { it.messages.singleOrNull()?.status == Status.PLAYED }
+        assertEquals(1, fake.sent.count { it.type == PacketType.ACK })
+
+        fake.inbox.send(text) // the peer resent it after a reconnect
+        while (fake.sent.count { it.type == PacketType.ACK } < 2) delay(10)
+        delay(200) // room for a wrongly queued second playback
+        val acks = fake.sent.filter { it.type == PacketType.ACK }
+        assertEquals(2, acks.size)
+        assertEquals(acks[0].seq, acks[1].seq)
+        assertEquals(acks[0].timestamp, acks[1].timestamp)
+        assertEquals(acks[0].ackTtsMs, acks[1].ackTtsMs)
+        assertEquals(listOf(hindi), speaker.played.toList())
+        assertEquals(1, sm.state.value.messages.size)
     }
 
     @Test

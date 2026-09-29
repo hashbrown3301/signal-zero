@@ -55,6 +55,8 @@ data class Message(
     val error: String? = null,
     /** Packet language code (see comm.Language); null for messages from before Phase 3. */
     val langCode: Int? = null,
+    /** OUTGOING: how many times the packet was sent again after a reconnect. */
+    val resends: Int = 0,
 ) {
     /** One-way network estimate: RTT / 2. */
     val networkMs: Long? get() = rttMs?.let { it / 2 }
@@ -108,6 +110,8 @@ class SessionManager(
     private val minPressMs: Long = 300,
     /** PING period while connected; 0 disables pinging. */
     private val pingIntervalMs: Long = 2_000,
+    /** How long unacknowledged messages wait for the link to come back before they fail. */
+    private val resendWindowMs: Long = 30_000,
 ) {
     private val job = SupervisorJob(parentScope.coroutineContext[Job])
     private val scope = CoroutineScope(parentScope.coroutineContext + job)
@@ -129,11 +133,19 @@ class SessionManager(
         data class Local(override val messageId: Int, override val text: String, override val langCode: Int) : Playback
     }
 
-    private data class Pending(val messageId: Int, val releasedAt: Long)
+    private data class Pending(val messageId: Int, val releasedAt: Long, val packet: Packet)
+
+    /** Identity of a received TEXT: a resend repeats seq and timestamp. */
+    private data class TextKey(val seq: Int, val timestamp: Long)
 
     private val talking = MutableStateFlow(false)
     private val playQueue = Channel<Playback>(Channel.UNLIMITED)
     private val pending = ConcurrentHashMap<Int, Pending>()
+    private var giveUp: Job? = null // only touched by the link-state collector
+    /** Last received TEXTs, oldest first, each with the ACK sent for it (null until sent). Guarded by itself. */
+    private val seen = object : LinkedHashMap<TextKey, Packet?>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<TextKey, Packet?>) = size > SEEN_TEXTS
+    }
     private val nextId = AtomicInteger()
     private var nextSeq = 0
     private var pressedAt = 0L
@@ -150,9 +162,13 @@ class SessionManager(
             scope.launch {
                 transport.state.collect { link ->
                     // A new connection may take a different path; start RTT fresh.
-                    if (link !is LinkState.Connected) {
+                    if (link is LinkState.Connected) {
+                        giveUp?.cancel()
+                        resendPending(transport)
+                    } else {
                         resetRtt()
-                        failPending()
+                        // Unacknowledged messages get resendWindowMs to be resent after a reconnect.
+                        if (giveUp?.isActive != true) giveUp = scope.launch { delay(resendWindowMs); failPending() }
                         preloadedLang = -1 // the next peer may speak another language
                     }
                     _state.update {
@@ -191,7 +207,21 @@ class SessionManager(
         _state.update { it.copy(rttMs = median) }
     }
 
-    /** The link dropped: no ACK can arrive for what is still unacknowledged, so stop waiting. */
+    /** The link is back: send what is still unacknowledged again, unchanged. A failure leaves it for the next reconnect. */
+    private suspend fun resendPending(transport: Transport) {
+        for (sent in pending.values.sortedBy { it.messageId }) { // send order; seq wraps at 65536
+            try {
+                transport.send(sent.packet)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return
+            }
+            updateMessage(sent.messageId) { it.copy(resends = it.resends + 1) }
+        }
+    }
+
+    /** The link stayed down for the whole window: no ACK can arrive for what is unacknowledged, so stop waiting. */
     private fun failPending() {
         for (seq in pending.keys.toList()) {
             val sent = pending.remove(seq) ?: continue // a late ACK won the race
@@ -269,8 +299,8 @@ class SessionManager(
 
         val seq = nextSeq++ and 0xFFFF
         val packet = Packet.text(seq, releasedAt, heard.text, language)
-        pending[seq] = Pending(base.id, releasedAt)
-        addMessage(base.copy(seq = seq, wireBytes = PacketCodec.OVERHEAD + packet.payload.size))
+        pending[seq] = Pending(base.id, releasedAt, packet)
+        addMessage(base.copy(seq = seq, wireBytes = PacketCodec.wireSize(packet)))
         try {
             transport.send(packet)
         } catch (e: CancellationException) {
@@ -284,6 +314,20 @@ class SessionManager(
     private suspend fun onPacket(p: Packet) {
         when (p.type) {
             PacketType.TEXT -> {
+                // A resend after a reconnect may repeat a message we already have: don't play it twice.
+                val key = TextKey(p.seq, p.timestamp)
+                val duplicate: Boolean
+                val ack: Packet?
+                synchronized(seen) {
+                    duplicate = key in seen
+                    ack = seen[key]
+                    if (!duplicate) seen[key] = null
+                }
+                if (duplicate) {
+                    // The first ACK may have died with the link; if it isn't sent yet, it will go out on its own.
+                    if (ack != null) runCatching { transport?.send(ack) }
+                    return
+                }
                 val id = nextId.getAndIncrement()
                 addMessage(
                     Message(
@@ -293,7 +337,7 @@ class SessionManager(
                         status = Status.QUEUED,
                         langCode = p.langCode,
                         seq = p.seq,
-                        wireBytes = PacketCodec.OVERHEAD + p.payload.size,
+                        wireBytes = PacketCodec.wireSize(p),
                     )
                 )
                 playQueue.send(Playback.Remote(p, id, clock()))
@@ -337,9 +381,9 @@ class SessionManager(
                 val prepared = speaker.prepare(item.text, item.langCode)
                 if (item is Playback.Remote) {
                     // Delivered either way; with no voice the text is shown and the ACK reports 0 ms TTS.
-                    runCatching {
-                        transport?.send(Packet.ack(of = item.packet, ttsMs = prepared?.synthMs ?: 0, queueMs = queueMs ?: 0))
-                    }
+                    val ack = Packet.ack(of = item.packet, ttsMs = prepared?.synthMs ?: 0, queueMs = queueMs ?: 0)
+                    synchronized(seen) { seen.replace(TextKey(item.packet.seq, item.packet.timestamp), ack) }
+                    runCatching { transport?.send(ack) }
                 }
                 if (prepared == null) {
                     updateMessage(item.messageId) { it.copy(status = Status.NO_VOICE, queueMs = queueMs) }
@@ -376,6 +420,7 @@ class SessionManager(
     private companion object {
         const val MAX_MESSAGES = 100
         const val RTT_WINDOW = 10
+        const val SEEN_TEXTS = 64
         const val PING_TIMEOUT_MS = 10_000L
     }
 }

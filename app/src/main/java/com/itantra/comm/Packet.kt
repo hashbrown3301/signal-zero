@@ -56,16 +56,22 @@ class Packet(
     /** UTF-8 text of a TEXT packet. */
     val text: String get() = payload.decodeToString()
 
-    /** Receiver's TTS synthesis time, from an ACK payload. */
-    val ackTtsMs: Long get() = readUInt32(0)
+    /** Receiver's TTS synthesis time, from an ACK payload (16-bit in wire v2, 32-bit in v1). */
+    val ackTtsMs: Long get() = if (ackIsV1()) readUInt(0, 4) else readUInt(0, 2)
 
     /** How long the message waited in the receiver's queue (user was holding the talk button). */
-    val ackQueueMs: Long get() = readUInt32(4)
+    val ackQueueMs: Long get() = if (ackIsV1()) readUInt(4, 4) else readUInt(2, 2)
 
-    private fun readUInt32(offset: Int): Long {
-        check(type == PacketType.ACK && payload.size == ACK_PAYLOAD_SIZE) { "Not an ACK packet" }
+    private fun ackIsV1(): Boolean {
+        check(type == PacketType.ACK && (payload.size == ACK_PAYLOAD_SIZE || payload.size == ACK_PAYLOAD_SIZE_V1)) {
+            "Not an ACK packet"
+        }
+        return payload.size == ACK_PAYLOAD_SIZE_V1
+    }
+
+    private fun readUInt(offset: Int, width: Int): Long {
         var v = 0L
-        for (i in 0 until 4) v = (v shl 8) or (payload[offset + i].toLong() and 0xFF)
+        for (i in 0 until width) v = (v shl 8) or (payload[offset + i].toLong() and 0xFF)
         return v
     }
 
@@ -80,16 +86,22 @@ class Packet(
         "Packet($type seq=$seq lang=${language ?: "unknown($langCode)"} ts=$timestamp payload=${payload.size} B)"
 
     companion object {
-        const val ACK_PAYLOAD_SIZE = 8
+        /** Wire v2 ACK body: ttsMs and queueMs as uint16 each, saturating at 65535. */
+        const val ACK_PAYLOAD_SIZE = 4
+
+        /** Wire v1 ACK body: ttsMs and queueMs as uint32 each. Still readable; never written. */
+        const val ACK_PAYLOAD_SIZE_V1 = 8
 
         fun text(seq: Int, timestamp: Long, text: String, language: Language = Language.HINDI) =
             Packet(PacketType.TEXT, seq, language, timestamp, text.encodeToByteArray())
 
-        fun ack(of: Packet, ttsMs: Long, queueMs: Long): Packet {
-            val body = ByteArray(ACK_PAYLOAD_SIZE)
-            writeUInt32(body, 0, ttsMs)
-            writeUInt32(body, 4, queueMs)
-            return Packet(PacketType.ACK, of.seq, of.langCode, of.timestamp, body)
+        fun ack(of: Packet, ttsMs: Long, queueMs: Long) =
+            Packet(PacketType.ACK, of.seq, of.langCode, of.timestamp, ackPayload(ttsMs, queueMs))
+
+        internal fun ackPayload(ttsMs: Long, queueMs: Long): ByteArray {
+            val tts = ttsMs.coerceIn(0, 0xFFFF).toInt()
+            val queue = queueMs.coerceIn(0, 0xFFFF).toInt()
+            return byteArrayOf((tts shr 8).toByte(), tts.toByte(), (queue shr 8).toByte(), queue.toByte())
         }
 
         /** [language] is the sender's own language, so the receiver can load that voice before the first message. */
@@ -97,10 +109,5 @@ class Packet(
             Packet(PacketType.PING, seq, language, timestamp)
 
         fun pong(of: Packet) = Packet(PacketType.PONG, of.seq, of.langCode, of.timestamp)
-
-        private fun writeUInt32(dst: ByteArray, offset: Int, value: Long) {
-            val v = value.coerceIn(0, 0xFFFF_FFFFL)
-            for (i in 0 until 4) dst[offset + i] = (v shr (24 - 8 * i)).toByte()
-        }
     }
 }

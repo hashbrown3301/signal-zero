@@ -59,7 +59,7 @@ class TcpTransportTest {
     fun sendReturnsBytesOnWire() = test {
         val (_, joiner) = connectedPair()
         val sent = joiner.send(Packet.text(1, 0, hindi))
-        assertEquals(PacketCodec.OVERHEAD + hindi.encodeToByteArray().size, sent)
+        assertEquals(PacketCodec.wireSize(Packet.text(1, 0, hindi)), sent)
     }
 
     @Test

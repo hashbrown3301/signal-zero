@@ -40,7 +40,7 @@ class FramedStreamTest {
         val out = ByteArrayOutputStream()
         val packet = Packet.text(1, 100, hindi)
         val n = FramedStream(ByteArrayInputStream(ByteArray(0)), out).write(packet)
-        assertEquals(PacketCodec.OVERHEAD + hindi.encodeToByteArray().size, n)
+        assertEquals(PacketCodec.wireSize(packet), n)
         assertEquals(n, out.size())
         assertEquals(packet, reader(out.toByteArray()).read())
     }
