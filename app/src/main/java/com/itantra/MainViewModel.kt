@@ -268,7 +268,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             )
         }
         sessionJob = viewModelScope.launch {
-            _state.first { it.modelsReady }
+            _state.first { it.modelsReady && it.loadingLanguage == null }
             val transport = try {
                 when {
                     mode == Mode.SOLO -> null
@@ -291,9 +291,11 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             Log.i(TAG, "Session mode $mode over ${if (bt) "Bluetooth" else "Wi-Fi"}" +
                 if (mode == Mode.JOIN) " → $peerName ($peerId)" else "")
             val language = Language.fromIso(_state.value.myLanguage) ?: Language.HINDI
+            // Read the engines under their lock: a language load may have been queued behind the one that finished.
+            val listener = engineLock.withLock { DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock) }
             val sm = SessionManager(
                 this,
-                DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock),
+                listener,
                 DeviceSpeaker(voiceLock) { code -> voices.get(code) },
                 transport,
                 language = language,
@@ -513,7 +515,9 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val catalog = withContext(Dispatchers.IO) { runCatching { packRepo.catalog().sorted }.getOrDefault(emptyList()) }
             refreshLanguages()
             val mine = _state.value.myLanguage
-            if (_state.value.mode == null && _state.value.languages.none { it.iso == mine && it.hasSpeak }) loadLanguage("hi")
+            if (_state.value.mode == null && _state.value.loadingLanguage == null &&
+                _state.value.languages.none { it.iso == mine && it.hasSpeak }
+            ) loadLanguage("hi")
             _state.update {
                 it.copy(
                     packs = it.packs.copy(builtIn = builtIn, installed = installed, catalog = catalog, busy = false,

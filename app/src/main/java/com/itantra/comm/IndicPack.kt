@@ -17,7 +17,9 @@ import java.nio.charset.CodingErrorAction
  *   code point there goes through the escape instead.
  * - anything else (U+0000, other scripts, emoji, ZWJ/ZWNJ, ₹): byte 0x00, then the code point's UTF-8 bytes.
  *
- * English and unknown language codes have no block: only the ASCII and escape rules apply.
+ * English and unknown language codes have no block: only the ASCII and escape rules apply. A high byte in such a
+ * packet (e.g. a newer peer's language whose block this build doesn't know) decodes to U+FFFD rather than failing,
+ * so the text still shows and the link stays up.
  */
 object IndicPack {
 
@@ -63,7 +65,7 @@ object IndicPack {
         return out.toByteArray()
     }
 
-    /** @throws PacketException on a dangling or invalid escape, or a high byte with no script block. */
+    /** @throws PacketException on a dangling or invalid escape. */
     fun decode(bytes: ByteArray, langCode: Int): String {
         val base = blockBase(langCode)
         val sb = StringBuilder(bytes.size)
@@ -73,7 +75,7 @@ object IndicPack {
             when {
                 b == ESCAPE -> i = readEscaped(bytes, i, sb)
                 b < 0x80 -> sb.append(b.toChar())
-                base == 0 -> throw PacketException("Byte 0x${b.toString(16)} needs a script block")
+                base == 0 -> sb.append('\uFFFD')
                 b == 0xE4 || b == 0xE5 -> sb.appendCodePoint(0x0900 + (b - 0x80))
                 else -> sb.appendCodePoint(base + (b - 0x80))
             }

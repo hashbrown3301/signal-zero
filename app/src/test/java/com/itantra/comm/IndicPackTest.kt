@@ -125,8 +125,12 @@ class IndicPackTest {
         bad("overlong 3", 0x00, 0xE0, 0x80, 0xAF)
         bad("surrogate", 0x00, 0xED, 0xA0, 0x80)
         bad("above U+10FFFF", 0x00, 0xF4, 0x90, 0x80, 0x80)
-        bad("high byte, no block", 0x80, lang = Language.ENGLISH.code)
-        bad("high byte, unknown lang", 0xE4, lang = 99)
+    }
+
+    @Test
+    fun highByteWithoutABlockBecomesReplacementCharInsteadOfDroppingTheLink() {
+        assertEquals("a\uFFFD", IndicPack.decode(byteArrayOf(0x61, 0x80.toByte()), Language.ENGLISH.code))
+        assertEquals("\uFFFD", IndicPack.decode(byteArrayOf(0xE4.toByte()), 99))
     }
 
     // --- fuzz --------------------------------------------------------------------------------

@@ -397,6 +397,11 @@ class SessionManager(
             } catch (e: CancellationException) {
                 throw e  // the session is closing (e.g. Leave while speaking): not a playback failure
             } catch (e: Exception) {
+                // No ACK went out, so forget the message: the sender's resend then gets a fresh try instead of being dropped.
+                if (item is Playback.Remote) synchronized(seen) {
+                    val key = TextKey(item.packet.seq, item.packet.timestamp)
+                    if (seen[key] == null) seen.remove(key)
+                }
                 updateMessage(item.messageId) { it.copy(status = Status.FAILED, error = e.message) }
             } finally {
                 _state.update { it.copy(speaking = false) }
