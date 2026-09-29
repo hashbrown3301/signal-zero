@@ -148,7 +148,10 @@ class SessionManager(
             scope.launch {
                 transport.state.collect { link ->
                     // A new connection may take a different path; start RTT fresh.
-                    if (link !is LinkState.Connected) resetRtt()
+                    if (link !is LinkState.Connected) {
+                        resetRtt()
+                        failPending()
+                    }
                     _state.update {
                         it.copy(
                             link = link,
@@ -183,6 +186,14 @@ class SessionManager(
             rttSamples.sorted()[rttSamples.size / 2]
         }
         _state.update { it.copy(rttMs = median) }
+    }
+
+    /** The link dropped: no ACK can arrive for what is still unacknowledged, so stop waiting. */
+    private fun failPending() {
+        for (seq in pending.keys.toList()) {
+            val sent = pending.remove(seq) ?: continue // a late ACK won the race
+            updateMessage(sent.messageId) { it.copy(status = Status.FAILED, error = "Link lost before delivery") }
+        }
     }
 
     private fun resetRtt() {
@@ -259,6 +270,8 @@ class SessionManager(
         addMessage(base.copy(seq = seq, wireBytes = PacketCodec.OVERHEAD + packet.payload.size))
         try {
             transport.send(packet)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             pending.remove(seq)
             updateMessage(base.id) { it.copy(status = Status.FAILED, error = e.message ?: "Send failed") }

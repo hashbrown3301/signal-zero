@@ -135,6 +135,18 @@ class PackStoreTest {
     }
 
     @Test
+    fun langAndPacketCodeMustAgree() {
+        val store = store()
+        val mismatched = manifest().replace("\"lang\": \"ta\"", "\"lang\": \"gu\"")
+        val zip = zip(mapOf("ta-listen/pack.json" to mismatched.encodeToByteArray(), "ta-listen/model.onnx" to model,
+                            "ta-listen/tokens.txt" to tokens))
+        val e = assertThrows(PackException::class.java) { store.install(ByteArrayInputStream(zip)) }
+        assertTrue(e.message, e.message!!.contains("doesn't match packet code"))
+        assertTrue(store.list().isEmpty())
+        assertNull(store.get("ta-listen"))
+    }
+
+    @Test
     fun parsesRealBuilderManifest() {
         // Shape written by scripts/packs/build_pack.py (ml-listen before step 3), incl. keys the app doesn't use.
         val real = """{"format": 1, "id": "ml-listen", "lang": "ml", "packet_code": 9, "name": "Malayalam", "native": "മലയാളം",

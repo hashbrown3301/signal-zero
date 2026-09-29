@@ -11,10 +11,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
@@ -185,6 +188,36 @@ class SessionManagerTest {
         val msg = sm.state.first { it.messages.isNotEmpty() && it.messages.last().status == Status.FAILED }
             .messages.last()
         assertEquals(hindi, msg.text)
+    }
+
+    /** A transport whose link state and incoming packets the test drives by hand. */
+    private class FakeTransport : Transport {
+        override val state = MutableStateFlow<LinkState>(LinkState.Connected("fake"))
+        val inbox = Channel<Packet>(Channel.UNLIMITED)
+        val sent: MutableList<Packet> = Collections.synchronizedList(mutableListOf())
+        override val incoming: Flow<Packet> = inbox.receiveAsFlow()
+        override suspend fun send(packet: Packet): Int { sent += packet; return 0 }
+        override fun close() { state.value = LinkState.Closed }
+    }
+
+    @Test
+    fun linkLostBeforeAckFailsTheMessageAndLateAckIsIgnored() = test {
+        val fake = FakeTransport()
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake, minPressMs = 0, pingIntervalMs = 0)
+            .also { it.start() }
+        closeables += { sm.close() }
+
+        sm.talk()
+        val text = fake.sent.single { it.type == PacketType.TEXT }
+        assertEquals(Status.SENT, sm.state.value.messages.single().status)
+
+        fake.state.value = LinkState.Disconnected("gone")
+        val failed = sm.state.first { it.messages.singleOrNull()?.status == Status.FAILED }.messages.single()
+        assertEquals("Link lost before delivery", failed.error)
+
+        fake.inbox.send(Packet.ack(of = text, ttsMs = 1, queueMs = 0))
+        delay(300)
+        assertEquals(Status.FAILED, sm.state.value.messages.single().status)
     }
 
     @Test

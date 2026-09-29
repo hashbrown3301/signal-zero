@@ -34,6 +34,8 @@ import com.itantra.session.Status
 import com.itantra.speech.SttEngine
 import com.itantra.speech.TtsEngine
 import com.itantra.speech.VadTrimmer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -135,7 +137,10 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     private val factory by lazy { EngineFactory(getApplication()) }
     private val packRepo by lazy { PackRepository(getApplication()) }
+    /** Guards [vad] and [stt]: held while they run and while they're released. Taken before [voiceLock] when both are needed. */
     private val engineLock = Mutex()
+    /** Guards [voices]: held while a voice is looked up and synthesizes, and while voices are evicted or released. */
+    private val voiceLock = Mutex()
     private var vad: VadTrimmer? = null
     private var stt: SttEngine? = null
     /**
@@ -213,20 +218,22 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     }
                     stt?.release()
                     stt = null
-                    voices.clear()
+                    voiceLock.withLock { voices.clear() }
 
                     val t = SystemClock.elapsedRealtime()
                     val speak = packRepo.find(iso, PackManifest.KIND_SPEAK) ?: error("No speak pack installed for $iso")
                     stt = factory.stt(speak)
                     Log.i(TAG, "STT ${speak.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
                     // Preload this language's voice so the first Solo reply is quick (loaded lazily otherwise).
-                    Language.fromIso(iso)?.let { voices.get(it.code) }
+                    Language.fromIso(iso)?.let { voiceLock.withLock { voices.get(it.code) } }
                     SystemClock.elapsedRealtime() - start
                 }
             }
             Log.i(TAG, "language $iso ready in $took ms")
             prefs.edit().putString(KEY_MY_LANGUAGE, iso).apply()
             _state.update { it.copy(myLanguage = iso, modelsReady = true, loadingLanguage = null) }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Could not load language $iso", e)
             _state.update { it.copy(loadingLanguage = null, error = "Could not load $iso: ${e.message}") }
@@ -268,6 +275,8 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     mode == Mode.HOST -> TcpTransport.host()
                     else -> TcpTransport.join(peerId)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Could not start the link", e)
                 _state.update { it.copy(error = "Could not start the link: ${e.message}") }
@@ -278,8 +287,8 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val language = Language.fromIso(_state.value.myLanguage) ?: Language.HINDI
             val sm = SessionManager(
                 this,
-                DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt)),
-                DeviceSpeaker { code -> withContext(Dispatchers.Default) { engineLock.withLock { voices.get(code) } } },
+                DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock),
+                DeviceSpeaker(voiceLock) { code -> voices.get(code) },
                 transport,
                 language = language,
                 clock = SystemClock::elapsedRealtime,
@@ -470,17 +479,23 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     fun deletePack(id: String) = packAction { repo ->
         val pack = repo.installed().firstOrNull { it.id == id }
-        if (pack?.isListen == true) voices.evict(pack.packetCode)
+        // The running session holds this phone's STT, so its speak pack can't go until the session ends.
+        if (pack != null && pack.isSpeak && pack.lang == _state.value.myLanguage && _state.value.mode != null) {
+            return@packAction "End the session before deleting ${pack.name}, the language you speak" to true
+        }
+        if (pack?.isListen == true) voiceLock.withLock { voices.evict(pack.packetCode) }
         if (repo.delete(id)) "Deleted $id" to false else "$id was not installed" to true
     }
 
     /** Runs [action] off the main thread, then refreshes the pack lists; errors become the screen's message. */
-    private fun packAction(action: (PackRepository) -> Pair<String, Boolean>?) {
+    private fun packAction(action: suspend (PackRepository) -> Pair<String, Boolean>?) {
         _state.update { it.copy(packs = it.packs.copy(busy = true)) }
         viewModelScope.launch {
             val (message, isError) = withContext(Dispatchers.IO) {
                 try {
                     action(packRepo) ?: (null to false)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "pack action failed", e)
                     (e.message ?: e.toString()) to true
@@ -492,7 +507,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val catalog = withContext(Dispatchers.IO) { runCatching { packRepo.catalog().sorted }.getOrDefault(emptyList()) }
             refreshLanguages()
             val mine = _state.value.myLanguage
-            if (_state.value.languages.none { it.iso == mine && it.hasSpeak }) loadLanguage("hi")
+            if (_state.value.mode == null && _state.value.languages.none { it.iso == mine && it.hasSpeak }) loadLanguage("hi")
             _state.update {
                 it.copy(
                     packs = it.packs.copy(builtIn = builtIn, installed = installed, catalog = catalog, busy = false,
@@ -533,9 +548,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     override fun onCleared() {
         leaveSession()
-        vad?.release()
-        stt?.release()
-        voices.clear()
+        // A cancelled STT or synthesis call keeps running until its native call returns, so release only once it
+        // has let go of the lock. viewModelScope is already cancelled, hence a scope of its own.
+        CoroutineScope(Dispatchers.Default).launch {
+            engineLock.withLock {
+                vad?.release()
+                stt?.release()
+                vad = null
+                stt = null
+            }
+            voiceLock.withLock { voices.clear() }
+        }
     }
 
     private companion object {

@@ -1,5 +1,6 @@
 package com.itantra.packs
 
+import com.itantra.comm.Language
 import java.io.File
 import java.io.InputStream
 import java.security.MessageDigest
@@ -13,6 +14,7 @@ class PackException(message: String) : Exception(message)
  *
  * [install] unzips into a temporary folder, checks the manifest and every file's size and SHA-256, and only
  * then moves the pack into place, so a broken or tampered zip never replaces a working pack.
+ * install/delete/cleanUp are synchronized so overlapping calls (sideload scan, import, download) can't interleave.
  * Plain JVM code (no Android), unit-tested on the PC.
  */
 class PackStore(private val root: File) {
@@ -31,9 +33,11 @@ class PackStore(private val root: File) {
 
     fun get(id: String): PackManifest? = dir(id).takeIf { it.isDirectory }?.let { runCatching { read(it) }.getOrNull() }
 
+    @Synchronized
     fun delete(id: String): Boolean = dir(id).takeIf { it.isDirectory }?.deleteRecursively() ?: false
 
     /** Installs a pack zip (as built by scripts/packs/build_pack.py); replaces an installed pack with the same id. */
+    @Synchronized
     fun install(zip: InputStream): PackManifest {
         val tmp = File(root, TMP_PREFIX + UUID.randomUUID())
         try {
@@ -61,6 +65,7 @@ class PackStore(private val root: File) {
     }
 
     /** Removes leftovers of an interrupted install. */
+    @Synchronized
     fun cleanUp() {
         root.listFiles().orEmpty().filter { it.name.startsWith(TMP_PREFIX) }.forEach { it.deleteRecursively() }
     }
@@ -78,6 +83,9 @@ class PackStore(private val root: File) {
         }
         if (manifest.kind != PackManifest.KIND_SPEAK && manifest.kind != PackManifest.KIND_LISTEN) {
             throw PackException("${manifest.id}: unknown kind ${manifest.kind}")
+        }
+        if (Language.fromIso(manifest.lang)?.code != manifest.packetCode) {
+            throw PackException("${manifest.id}: lang ${manifest.lang} doesn't match packet code ${manifest.packetCode}")
         }
         return manifest
     }

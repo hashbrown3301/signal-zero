@@ -107,6 +107,7 @@ class BluetoothTransport private constructor(
                 failures = 0
                 serve(s)
             } catch (e: Exception) {
+                runCatching { socket?.close() } // a failed connect still holds a file descriptor
                 socket = null
                 failures++
                 "Connect failed: ${e.message}"

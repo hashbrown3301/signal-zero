@@ -96,6 +96,7 @@ class TcpTransport private constructor(
                 failures = 0
                 serve(s)
             } catch (e: IOException) {
+                runCatching { socket?.close() } // a failed connect still holds a file descriptor
                 socket = null
                 failures++
                 "Connect failed: ${e.message}"
