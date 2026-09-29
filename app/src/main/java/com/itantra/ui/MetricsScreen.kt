@@ -88,7 +88,7 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
                 Section("Link")
                 ValueRow("Text sent per sentence", stats.textSize)
                 ValueRow("Same sentences as audio", stats.audioSize)
-                ValueRow("Packet overhead", "17 B + CRC32")
+                ValueRow("Packet overhead", "17 B incl. CRC32")
                 ValueRow("Link", linkLabel)
             }
 

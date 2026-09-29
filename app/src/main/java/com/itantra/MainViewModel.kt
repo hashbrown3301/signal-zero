@@ -2,10 +2,12 @@ package com.itantra
 
 import android.app.ActivityManager
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import java.io.File
 import android.net.wifi.WifiInfo
 import android.os.Build
 import android.os.SystemClock
@@ -292,7 +294,9 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 if (mode == Mode.JOIN) " → $peerName ($peerId)" else "")
             val language = Language.fromIso(_state.value.myLanguage) ?: Language.HINDI
             // Read the engines under their lock: a language load may have been queued behind the one that finished.
-            val listener = engineLock.withLock { DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock) }
+            val listener = engineLock.withLock {
+                DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock, debugMicFile())
+            }
             val sm = SessionManager(
                 this,
                 listener,
@@ -554,6 +558,13 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             )
         }
         return keys.map { it.first }.toSet()
+    }
+
+    /** Debug builds: files/debug_mic.wav on external storage stands in for the mic once (see DeviceListener). */
+    private fun debugMicFile(): File? {
+        val app = getApplication<Application>()
+        if (app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return null
+        return app.getExternalFilesDir(null)?.let { File(it, "debug_mic.wav") }
     }
 
     override fun onCleared() {

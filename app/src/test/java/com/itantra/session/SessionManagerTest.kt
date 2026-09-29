@@ -57,8 +57,9 @@ class SessionManagerTest {
     ) : Speaker {
         val played: MutableList<String> = Collections.synchronizedList(mutableListOf())
         val preloaded: MutableList<Int> = Collections.synchronizedList(mutableListOf())
-        override suspend fun preload(langCode: Int) {
+        override suspend fun preload(langCode: Int): Boolean {
             preloaded += langCode
+            return langCode in voices
         }
         override suspend fun prepare(text: String, langCode: Int): Prepared? =
             if (langCode !in voices) null else object : Prepared {
@@ -166,7 +167,7 @@ class SessionManagerTest {
 
     @Test
     fun peerPingPreloadsItsVoiceOnce() = test {
-        val speaker = FakeSpeaker()
+        val speaker = FakeSpeaker(voices = setOf(Language.HINDI.code, Language.TAMIL.code))
         val (_, peer) = session(speaker = speaker)
 
         peer.send(Packet.ping(seq = 1, timestamp = 0, language = Language.TAMIL))
@@ -175,6 +176,19 @@ class SessionManagerTest {
         withTimeout(1_000) { while (speaker.preloaded.isEmpty()) delay(10) }
         delay(100)
         assertEquals(listOf(Language.TAMIL.code), speaker.preloaded.toList())
+    }
+
+    @Test
+    fun missingPeerVoiceIsRetriedOnTheNextPing() = test {
+        val speaker = FakeSpeaker(voices = setOf(Language.HINDI.code)) // no Tamil voice installed
+        val (_, peer) = session(speaker = speaker)
+
+        peer.send(Packet.ping(seq = 1, timestamp = 0, language = Language.TAMIL))
+        withTimeout(1_000) { while (speaker.preloaded.isEmpty()) delay(10) }
+        delay(100)
+        peer.send(Packet.ping(seq = 2, timestamp = 0, language = Language.TAMIL))
+        withTimeout(1_000) { while (speaker.preloaded.size < 2) delay(10) }
+        assertEquals(listOf(Language.TAMIL.code, Language.TAMIL.code), speaker.preloaded.toList())
     }
 
     @Test

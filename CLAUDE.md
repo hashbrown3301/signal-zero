@@ -45,6 +45,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
   - [x] Latency: PING carries the sender's language, the receiver preloads that voice once per connection; STT and own voice load in parallel.
   - [x] **Wire v2** (`PacketCodec.VERSION = 2`, still reads v1; **old builds can't read v2, update every phone**): `comm/IndicPack` packs Indian-script text at 1 byte/char (20-word Hindi sentence 261 → 111 B on the wire), ACK 8 → 4 B payload; unacked messages are resent after a reconnect within 30 s, receivers drop duplicates (seq + timestamp) and repeat the ACK. Fuzz tests on the decoders.
   - [x] UI motion (same layout/UX, Manrope kept): `ui/theme/Motion.kt` (springs, fades, `pressScale`), animated tabs/bottom nav, haptics on hold-to-talk and tab switch, cross-fading states, animated list items, background wash. Infinite animations only while visible.
+  - [x] Emulator end-to-end (2026-09-29, Pixel 9 host ↔ Pixel 9a join, x86_64 APK, `emu redir add tcp:5005:5005`, 1.5 GB each): Hindi both ways, English pack downloaded in-app, 9a switched to English, English → Hindi phone shown text-only until its English voice was downloaded, then played; peer voices preloaded from PINGs on connect; 13 of 13 messages delivered and ACKed. Wire sizes 35–66 B. Found and fixed: preload wasn't retried after a mid-session voice download. Emulator-only glitch: after a cold start the Pixel 9 AVD sometimes drew black / routed touches to an input sink until rebooted.
   - [ ] On-device check (S25 + A03 Core): talk flow, exit during STT, pack delete in session, reconnect resend, first-message latency in a new language, UI smoothness on the A03 Core.
 
 **Pending test day** (all tooling ready): Phase 1+2 exit run (10 sentences each way, Wi-Fi + Bluetooth, `summarize_benchmarks.py`), Phase 3 steps 8–9, and the step 6 leftovers (install prompt, int8 Hindi voice on the A03 Core).
@@ -87,6 +88,7 @@ adb logcat -s iTantra:* AndroidRuntime:E
 adb shell am start -n com.itantra/.MainActivity --es mode host        # or: --es mode join --es peer <ip>
 adb shell run-as com.itantra cat files/benchmarks.csv > benchmarks.csv # pull per-message timings
 adb push ta-listen.zip /sdcard/Android/data/com.itantra/files/incoming/  # sideload a pack (use PowerShell: Git Bash mangles /sdcard paths)
+adb push hi1.wav /sdcard/Android/data/com.itantra/files/debug_mic.wav  # debug builds: next talk press uses this 16 kHz mono WAV instead of the mic
 ```
 
 ## Environment notes

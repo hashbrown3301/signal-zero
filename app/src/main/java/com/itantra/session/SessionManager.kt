@@ -346,7 +346,11 @@ class SessionManager(
                 runCatching { transport?.send(Packet.pong(of = p)) }
                 if (p.langCode != preloadedLang) {
                     preloadedLang = p.langCode
-                    scope.launch { runCatching { speaker.preload(p.langCode) } }
+                    scope.launch {
+                        // No voice yet (not installed): try again on a later PING, so a voice downloaded mid-session
+                        // is loaded before the next message instead of on it.
+                        if (!runCatching { speaker.preload(p.langCode) }.getOrDefault(false)) preloadedLang = -1
+                    }
                 }
             }
             PacketType.ACK -> pending.remove(p.seq)?.let { sent ->

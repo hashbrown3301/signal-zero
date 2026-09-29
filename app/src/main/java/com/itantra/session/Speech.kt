@@ -29,8 +29,11 @@ interface Speaker {
      */
     suspend fun prepare(text: String, langCode: Int): Prepared?
 
-    /** Loads the voice for [langCode] ahead of its first message (the peer announced its language). */
-    suspend fun preload(langCode: Int) {}
+    /**
+     * Loads the voice for [langCode] ahead of its first message (the peer announced its language). Returns false if
+     * this phone has no voice for it yet, so the caller can try again later (e.g. after the pack is downloaded).
+     */
+    suspend fun preload(langCode: Int): Boolean = true
 }
 
 interface Prepared {

@@ -2,6 +2,7 @@ package com.itantra.session
 
 import android.annotation.SuppressLint
 import com.itantra.audio.AudioRecorder
+import com.itantra.audio.readPcm16MonoWav
 import com.itantra.speech.SttEngine
 import com.itantra.speech.TtsEngine
 import com.itantra.speech.VadTrimmer
@@ -9,23 +10,29 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * [Listener] backed by the phone's mic, Silero VAD and IndicConformer STT. [engineLock] is held while the native
  * engines run, so their owner can't release them mid-call (it takes the same lock before releasing).
+ *
+ * [debugMic] (debug builds only): if that WAV file exists when the button is released, it is used instead of what
+ * the mic heard, then deleted. Lets emulators and scripted benchmark runs "speak" without a person.
  */
 class DeviceListener(
     private val recorder: AudioRecorder,
     private val vad: VadTrimmer,
     private val stt: SttEngine,
     private val engineLock: Mutex,
+    private val debugMic: File? = null,
 ) : Listener {
 
     @SuppressLint("MissingPermission") // the UI requests RECORD_AUDIO before the first press
     override fun start() = recorder.start()
 
     override suspend fun finish(): Heard = withContext(Dispatchers.Default) {
-        val audio = recorder.stop()
+        val heard = recorder.stop()
+        val audio = debugMic?.takeIf { it.isFile }?.let { wav -> readPcm16MonoWav(wav, recorder.sampleRate).also { wav.delete() } } ?: heard
         engineLock.withLock {
             val trimmed = vad.trim(audio)
             val recordedSec = audio.size / recorder.sampleRate.toFloat()
@@ -63,7 +70,6 @@ class DeviceSpeaker(private val voiceLock: Mutex, private val voiceFor: (Int) ->
         }
     }
 
-    override suspend fun preload(langCode: Int) {
-        withContext(Dispatchers.Default) { voiceLock.withLock { voiceFor(langCode) } }
-    }
+    override suspend fun preload(langCode: Int): Boolean =
+        withContext(Dispatchers.Default) { voiceLock.withLock { voiceFor(langCode) != null } }
 }
