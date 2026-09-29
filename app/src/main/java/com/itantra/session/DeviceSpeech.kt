@@ -2,7 +2,9 @@ package com.itantra.session
 
 import android.annotation.SuppressLint
 import com.itantra.audio.AudioRecorder
+import android.os.SystemClock
 import com.itantra.audio.readPcm16MonoWav
+import com.itantra.audio.writePcm16MonoWav
 import com.itantra.speech.SttEngine
 import com.itantra.speech.TtsEngine
 import com.itantra.speech.VadTrimmer
@@ -55,8 +57,15 @@ class DeviceListener(
  * [Speaker] backed by the installed voices; [voiceFor] returns the voice for a language code, or null.
  * [voiceLock] is held from lookup through synthesis, so the voice can't be evicted and released mid-call.
  * Playback only touches the rendered samples, so it runs outside the lock.
+ *
+ * [debugDump] (debug builds only): if that folder exists, each played utterance is also saved there as
+ * `<elapsedRealtime ms at playback start>.wav`, so a screen recording can be given the app's real audio.
  */
-class DeviceSpeaker(private val voiceLock: Mutex, private val voiceFor: (Int) -> TtsEngine?) : Speaker {
+class DeviceSpeaker(
+    private val voiceLock: Mutex,
+    private val debugDump: File? = null,
+    private val voiceFor: (Int) -> TtsEngine?,
+) : Speaker {
     override suspend fun prepare(text: String, langCode: Int): Prepared? {
         val (tts, audio) = withContext(Dispatchers.Default) {
             voiceLock.withLock {
@@ -66,7 +75,12 @@ class DeviceSpeaker(private val voiceLock: Mutex, private val voiceFor: (Int) ->
         } ?: return null
         return object : Prepared {
             override val synthMs = audio.millis
-            override suspend fun play() = tts.play(audio)
+            override suspend fun play() {
+                debugDump?.takeIf { it.isDirectory }?.let { dir ->
+                    runCatching { writePcm16MonoWav(File(dir, "${SystemClock.elapsedRealtime()}.wav"), audio.samples, audio.sampleRate) }
+                }
+                tts.play(audio)
+            }
         }
     }
 

@@ -44,3 +44,14 @@ private const val RIFF = 0x46464952 // "RIFF" little-endian
 private const val WAVE = 0x45564157
 private const val FMT = 0x20746d66
 private const val DATA = 0x61746164
+
+/** Writes floats in [-1, 1] as a 16-bit PCM mono WAV (debug audio dumps). */
+fun writePcm16MonoWav(file: File, samples: FloatArray, sampleRate: Int) {
+    val data = samples.size * 2
+    val b = ByteBuffer.allocate(44 + data).order(ByteOrder.LITTLE_ENDIAN)
+    b.putInt(RIFF).putInt(36 + data).putInt(WAVE)
+    b.putInt(FMT).putInt(16).putShort(1).putShort(1).putInt(sampleRate).putInt(sampleRate * 2).putShort(2).putShort(16)
+    b.putInt(DATA).putInt(data)
+    for (s in samples) b.putShort((s.coerceIn(-1f, 1f) * 32767).toInt().toShort())
+    file.writeBytes(b.array())
+}

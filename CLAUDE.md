@@ -89,6 +89,7 @@ adb shell am start -n com.itantra/.MainActivity --es mode host        # or: --es
 adb shell run-as com.itantra cat files/benchmarks.csv > benchmarks.csv # pull per-message timings
 adb push ta-listen.zip /sdcard/Android/data/com.itantra/files/incoming/  # sideload a pack (use PowerShell: Git Bash mangles /sdcard paths)
 adb push hi1.wav /sdcard/Android/data/com.itantra/files/debug_mic.wav  # debug builds: next talk press uses this 16 kHz mono WAV instead of the mic
+adb shell mkdir -p /sdcard/Android/data/com.itantra/files/tts_dump  # debug builds: every played utterance is saved there as <elapsedRealtime ms>.wav
 ```
 
 ## Environment notes

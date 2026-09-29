@@ -28,6 +28,13 @@ class WavFileTest {
     }
 
     @Test
+    fun writtenWavReadsBack() {
+        val f = File.createTempFile("out", ".wav").apply { deleteOnExit() }
+        writePcm16MonoWav(f, floatArrayOf(0f, 0.5f, -1f, 2f), 16_000)
+        assertArrayEquals(floatArrayOf(0f, 16383 / 32768f, -32767 / 32768f, 32767 / 32768f), readPcm16MonoWav(f), 0f)
+    }
+
+    @Test
     fun rejectsOtherFormats() {
         assertThrows(IllegalArgumentException::class.java) { readPcm16MonoWav(wav(22_050, 1, shortArrayOf(1))) }
         assertThrows(IllegalArgumentException::class.java) { readPcm16MonoWav(wav(16_000, 2, shortArrayOf(1, 2))) }

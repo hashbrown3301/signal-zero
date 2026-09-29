@@ -295,12 +295,12 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val language = Language.fromIso(_state.value.myLanguage) ?: Language.HINDI
             // Read the engines under their lock: a language load may have been queued behind the one that finished.
             val listener = engineLock.withLock {
-                DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock, debugMicFile())
+                DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock, debugFile("debug_mic.wav"))
             }
             val sm = SessionManager(
                 this,
                 listener,
-                DeviceSpeaker(voiceLock) { code -> voices.get(code) },
+                DeviceSpeaker(voiceLock, debugFile("tts_dump")) { code -> voices.get(code) },
                 transport,
                 language = language,
                 clock = SystemClock::elapsedRealtime,
@@ -560,11 +560,14 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         return keys.map { it.first }.toSet()
     }
 
-    /** Debug builds: files/debug_mic.wav on external storage stands in for the mic once (see DeviceListener). */
-    private fun debugMicFile(): File? {
+    /**
+     * Debug builds only: a path in the app's external files folder, where adb can reach it. debug_mic.wav stands in
+     * for the mic once (DeviceListener); a tts_dump folder receives every played utterance (DeviceSpeaker).
+     */
+    private fun debugFile(name: String): File? {
         val app = getApplication<Application>()
         if (app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return null
-        return app.getExternalFilesDir(null)?.let { File(it, "debug_mic.wav") }
+        return app.getExternalFilesDir(null)?.let { File(it, name) }
     }
 
     override fun onCleared() {
