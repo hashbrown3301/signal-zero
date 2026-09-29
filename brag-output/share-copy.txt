@@ -1,0 +1,1 @@
+Introducing iTantra: speak your language, they hear theirs. One spoken sentence is 120,336 bytes of voice, 5,735 bytes as a GSM call; iTantra sends its meaning in 55 bytes (104x less), phone to phone in about a second, with no internet and no servers, in ten Indian languages.
