@@ -4,6 +4,144 @@
   "source_commit": "d1b3f864cde9ed03cc6772164e468edd4b37b98e",
   "assets": [
     {
+      "name": "iTantra-0.2.0-arm64.apk",
+      "size": 257074267,
+      "sha256": "1cf2bcc038e3366d22f20b01185e620d9e2a99d8468fb4ed4812815fc3b2a0f8",
+      "blobs": [
+        {
+          "git_blob_sha": "7b0f20c600dfac04be8ff22e067a55ec7721da82",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "09f838791ea6c6d9dee5c9f02e698c2687493fb3",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "3c300fcfad84434c7b304e56257bcfea71e148a7",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "baffaaea19cdb1dcd9a381dd1cb6a3fe66ec6552",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "996b4441c9b239411fb3a15cc27588fdf50b00df",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "f41f64de17d3f5baa393fa84b704d3a6fc79a597",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "89790c40b610541cef4525f25d1980e01097ea03",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "05b74223eb6d3a856479acf7eb2e26cddb708f52",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "8a0db7130f4cb2e39a49971972f5fe0bd2a6f73c",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "22df91bfaac5fb4b9ce1ec043ec168bc4e881cbb",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "ffb35abe2ac6f905605bfacf36a475519ecbeb78",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "50a95011821994f5e494bc3b28afba224b1da841",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "a3ff1f19306fb777f57dd6a016bb63ca7e0a0148",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "006c5b0b5bb9a1a0d566b005131cfc268a998615",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "6850ce8916fece85bb91c62d37dff67f0481feda",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "ae1be560f32e0d2fc082b67b510d452fe34a5e05",
+          "size": 5416027
+        }
+      ]
+    },
+    {
+      "name": "iTantra-0.2.0-armv7.apk",
+      "size": 245658731,
+      "sha256": "1f894c1d3ad6023b040b01ba1b71837b72d663be118bbf23c0bdc36cb35a23a0",
+      "blobs": [
+        {
+          "git_blob_sha": "44c4619d5824fbaaa5acfb65d237050143389d5f",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "ac52fb7b3c3d267eddcc07ec36292e3ed00e1245",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "852f57bec35089fb6e4b9b74cf247ef8132093aa",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "d0d0230d494218907925f520b91180223ef1d02f",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "eabfbd0de306fd83f9df8e09524d114c2385222f",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "7ce2723c6854ee2fa16ff8622826a0aeee7bf681",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "cf5c14aa5f834380023e25febc2d8b32dcc05bb3",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "5f3744ce87e91a8afa9dd8456be24b1e7994842f",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "b0aa8fe52a5a517dc9c8531f6c7061f11622b274",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "732e9e4433feda527dcca9b881d274ebac5af45f",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "7bc36674021850e1ab14a4e157201d8390cea48b",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "b23af808b32d71377ed5d5286f49407721530f60",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "684c1cf33ce8504c2da2fd0350395e1c5e659e11",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "b1807d8ad0feaa1795d08dc2ff570d00ef23d509",
+          "size": 16777216
+        },
+        {
+          "git_blob_sha": "1f7fee4604663b20c5c60b39b055bbc40d31e03f",
+          "size": 10777707
+        }
+      ]
+    },
+    {
       "name": "SHA256SUMS.txt",
       "size": 268,
       "sha256": "42e0cd7451e7a6857c51f9239b7ce939e9ba5440979c21ccba620d02c72f6556",
@@ -11,6 +149,17 @@
         {
           "git_blob_sha": "8d976dbf4c43391fed69cc7f6c6deb8b2dbf58e5",
           "size": 268
+        }
+      ]
+    },
+    {
+      "name": "release-manifest.json",
+      "size": 1911,
+      "sha256": "70004e0d655c5ad0c01d96c0b0b2c9b65d76819bae4679fc912ffa0b921d18cb",
+      "blobs": [
+        {
+          "git_blob_sha": "dda4af8d4c1488bd6db747685fc7e152cd8899f9",
+          "size": 1911
         }
       ]
     }
