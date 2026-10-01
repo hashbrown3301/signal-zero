@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.Socket
+import java.net.SocketException
 
 class TcpTransportTest {
 
@@ -109,6 +110,24 @@ class TcpTransportTest {
         host2.awaitConnected()
         joiner.send(Packet.text(3, 0, hindi))
         assertEquals(hindi, host2.incoming.first().text)
+    }
+
+    @Test
+    fun closingHostDuringAcceptClosesTheClientSocket() = test {
+        repeat(30) {
+            val host = TcpTransport.host(port = 0, retryDelaysMs = fastRetry).tracked()
+            val port = host.awaitListening()
+            Socket("127.0.0.1", port).use { raw ->
+                raw.soTimeout = 1_000
+                // Client connect can complete before the host registers the accepted socket.
+                host.close()
+                try {
+                    assertEquals(-1, raw.getInputStream().read())
+                } catch (_: SocketException) {
+                    // TCP reset is also a valid close; a read timeout is not.
+                }
+            }
+        }
     }
 
     @Test

@@ -57,7 +57,7 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
     val stats = remember(messages, rttMs) { computeStats(messages, rttMs) }
     val onPhone = ui.packs.builtIn + ui.packs.installed
     val speak = onPhone.firstOrNull { it.lang == ui.myLanguage && it.kind == PackManifest.KIND_SPEAK }
-    val listen = onPhone.firstOrNull { it.lang == ui.myLanguage && it.kind == PackManifest.KIND_LISTEN }
+    val listen = onPhone.firstOrNull { it.lang == ui.listenLanguage && it.kind == PackManifest.KIND_LISTEN }
     val linkLabel = if (ui.mode == null || ui.mode == MainViewModel.Mode.SOLO) null else ui.linkTypeLabel()
     val language = englishName(ui.myLanguage)
 
@@ -78,10 +78,11 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
             FadeInSection(0) {
                 Section("Latency", "p50", "p90")
                 PercentileRow("Round trip (RTT)", stats.rtt)
-                PercentileRow("Release → heard", stats.heard)
+                PercentileRow("Release → receiver handled", stats.heard)
                 PercentileRow("Speech → text", stats.stt)
-                PercentileRow("Text → voice", stats.tts)
-                Note("From this session's messages on this phone. Talk a few times to fill these in.")
+                PercentileRow("Offline translation", stats.translation)
+                PercentileRow("Text → first voice", stats.tts)
+                Note("From this session's messages. Receiver timing is an RTT-based estimate; an ACK does not prove successful translation or audible playback.")
             }
 
             FadeInSection(1) {
@@ -93,7 +94,12 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
             }
 
             FadeInSection(2) {
-                PhoneSection(language, speak?.let { "%.1f MB".format(it.size / 1e6) }, listen?.let { "%.1f MB".format(it.size / 1e6) })
+                PhoneSection(
+                    language, englishName(ui.listenLanguage),
+                    speak?.let { "%.1f MB".format(it.size / 1e6) },
+                    listen?.let { "%.1f MB".format(it.size / 1e6) },
+                    ui.translation.modelSizeBytes.takeIf { ui.translation.ready && it > 0 }?.let { "%.1f MB".format(it / 1e6) },
+                )
             }
 
             FadeInSection(3) { AccuracyTable() }
@@ -114,7 +120,7 @@ private fun FadeInSection(index: Int, content: @Composable ColumnScope.() -> Uni
 
 /** This phone's memory (PSS), refreshed every few seconds; only this section recomposes when it changes. */
 @Composable
-private fun PhoneSection(language: String, speakSize: String?, voiceSize: String?) {
+private fun PhoneSection(language: String, voiceLanguage: String, speakSize: String?, voiceSize: String?, translationSize: String?) {
     val pssMb by produceState<Long?>(null) {
         while (true) {
             value = withContext(Dispatchers.IO) { Debug.getPss() / 1024 }
@@ -124,12 +130,13 @@ private fun PhoneSection(language: String, speakSize: String?, voiceSize: String
     Section("Phone")
     ValueRow("RAM used by iTantra", pssMb?.let { "$it MB" })
     ValueRow("Speech model, $language", speakSize)
-    ValueRow("Voice, $language", voiceSize)
+    ValueRow("Voice, $voiceLanguage", voiceSize)
+    ValueRow("Translation pack", translationSize)
 }
 
 @Composable
 private fun AccuracyTable() {
-    Section("Accuracy", "CER", "WER")
+    Section("Speech recognition accuracy", "CER", "WER")
     ACCURACY.forEach { (iso, cer, wer) ->
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -143,7 +150,8 @@ private fun AccuracyTable() {
     }
     Note(
         "Character / word error rate on 3 FLEURS test clips per language, measured when the packs were built; " +
-            "lower is better. *Tamil: one clip had numbers spoken as words; 19.8% CER over 10 clips.",
+            "lower is better. *Tamil: one clip had numbers spoken as words; 19.8% CER over 10 clips. " +
+            "These scores measure recognition, not translation quality.",
     )
 }
 
@@ -205,6 +213,7 @@ private data class Stats(
     val rtt: Percentiles,
     val heard: Percentiles,
     val stt: Percentiles,
+    val translation: Percentiles,
     val tts: Percentiles,
     val textSize: String?,
     val audioSize: String?,
@@ -217,6 +226,7 @@ private fun computeStats(messages: List<Message>, rttMs: Long?): Stats {
         rtt = percentiles(outgoing.mapNotNull { it.rttMs } + listOfNotNull(rttMs)),
         heard = percentiles(outgoing.mapNotNull { it.endToEndMs }),
         stt = percentiles(messages.filter { it.direction != Direction.INCOMING }.mapNotNull { it.sttMs }),
+        translation = percentiles(messages.mapNotNull { it.translationMs }),
         tts = percentiles(messages.filter { it.direction != Direction.OUTGOING }.mapNotNull { it.ttsMs }),
         textSize = sizes.takeIf { it.isNotEmpty() }?.let { "${it.min()}–${it.max()} B" },
         audioSize = audioRange(messages),

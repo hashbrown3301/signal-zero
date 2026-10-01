@@ -5,6 +5,8 @@ Run from the repo root:
 
 Produces:
     app/libs/sherpa-onnx-<ver>.aar
+    app/libs/onnxruntime-android-1.27.0-shared.aar (Java/JNI; shares sherpa's native runtime)
+    app/libs/onnxruntime-extensions-android-0.13.0.aar
     app/src/main/assets/vad/silero_vad.onnx
     app/src/main/assets/stt/model.int8.onnx   (patched with sherpa-onnx metadata)
     app/src/main/assets/stt/tokens.txt
@@ -12,6 +14,7 @@ Produces:
 Downloads are cached in scripts/downloads/, so re-running is cheap.
 """
 
+import argparse
 import shutil
 import sys
 import tarfile
@@ -20,6 +23,7 @@ from pathlib import Path
 
 import onnx
 from huggingface_hub import hf_hub_download
+from prepare_translation_runtime import MAVEN_CENTRAL, prepare_translation_runtime
 
 SHERPA_VERSION = "1.13.7"
 STT_REPO = "OpenVoiceOS/ai4bharat-indicconformer-hi-onnx"
@@ -66,14 +70,14 @@ def download(url: str, dest: Path) -> Path:
 
 
 def fetch_aar() -> None:
-    print("[1/4] sherpa-onnx AAR")
+    print("[1/5] sherpa-onnx AAR")
     aar = download(AAR_URL, CACHE / AAR_URL.rsplit("/", 1)[1])
     LIBS.mkdir(parents=True, exist_ok=True)
     shutil.copy2(aar, LIBS / aar.name)
 
 
 def fetch_vad() -> None:
-    print("[2/4] Silero VAD")
+    print("[2/5] Silero VAD")
     vad = download(VAD_URL, CACHE / "silero_vad.onnx")
     out = ASSETS / "vad"
     out.mkdir(parents=True, exist_ok=True)
@@ -108,7 +112,7 @@ def patch_indicconformer_metadata(src: Path, dst: Path) -> None:
 
 
 def fetch_stt() -> None:
-    print("[3/4] IndicConformer Hindi STT")
+    print("[3/5] IndicConformer Hindi STT")
     model = Path(hf_hub_download(STT_REPO, "model.int8.onnx", cache_dir=CACHE / "hf"))
     vocab = Path(hf_hub_download(STT_REPO, "vocab.txt", cache_dir=CACHE / "hf"))
 
@@ -122,7 +126,7 @@ def fetch_stt() -> None:
 
 
 def fetch_tts() -> None:
-    print(f"[4/4] Piper TTS voice {TTS_VOICE}")
+    print(f"[4/5] Piper TTS voice {TTS_VOICE}")
     archive = download(TTS_URL, CACHE / f"{TTS_VOICE}.tar.bz2")
     out = ASSETS / "tts"
     if out.exists():
@@ -135,10 +139,19 @@ def fetch_tts() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--runtime-only", action="store_true",
+                        help="Prepare native/Java libraries without downloading or changing speech models")
+    parser.add_argument("--maven-base-url", default=MAVEN_CENTRAL,
+                        help="Maven Central or a mirror for the pinned ORT artifacts")
+    args = parser.parse_args()
     fetch_aar()
-    fetch_vad()
-    fetch_stt()
-    fetch_tts()
+    if not args.runtime_only:
+        fetch_vad()
+        fetch_stt()
+        fetch_tts()
+    print("[5/5] offline translation runtime")
+    prepare_translation_runtime(args.maven_base_url)
     print("Done.")
 
 

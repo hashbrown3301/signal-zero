@@ -74,6 +74,11 @@ class TcpTransport private constructor(
             return
         }
         server = srv
+        // close() can run while bind() is finishing, before the server was registered.
+        if (closed) {
+            srv.close()
+            return
+        }
         while (!closed) {
             setState(LinkState.Listening(srv.localPort))
             val client = try {
@@ -92,6 +97,10 @@ class TcpTransport private constructor(
             val reason = try {
                 val s = Socket()
                 socket = s // lets close() abort a pending connect
+                if (closed) {
+                    s.close()
+                    return
+                }
                 s.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
                 failures = 0
                 serve(s)
@@ -109,13 +118,16 @@ class TcpTransport private constructor(
 
     /** Reads packets from [s] until the connection ends; returns why it ended. */
     private suspend fun serve(s: Socket): String {
-        s.tcpNoDelay = true // tiny packets: don't let Nagle's algorithm hold them back
-        s.keepAlive = true
-        val stream = FramedStream(s.getInputStream(), s.getOutputStream())
         socket = s
-        framed = stream
-        setState(LinkState.Connected("${s.inetAddress.hostAddress}:${s.port}"))
         return try {
+            // Either close() sees this registered socket or this check catches a
+            // close that happened between accept() and registration.
+            if (closed) return "Closed"
+            s.tcpNoDelay = true // tiny packets: don't let Nagle's algorithm hold them back
+            s.keepAlive = true
+            val stream = FramedStream(s.getInputStream(), s.getOutputStream())
+            framed = stream
+            setState(LinkState.Connected("${s.inetAddress.hostAddress}:${s.port}"))
             while (true) inbox.send(stream.read())
             @Suppress("UNREACHABLE_CODE")
             error("unreachable")

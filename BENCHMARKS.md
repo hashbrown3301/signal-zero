@@ -1,5 +1,10 @@
 # iTantra benchmarks
 
+Current offline-engine cloud measurements and the phone evidence comparison are
+in [docs/CURRENT_APP_BENCHMARKS.md](docs/CURRENT_APP_BENCHMARKS.md).
+The phone runs below predate the translation engine and measure recognition,
+original-language voice playback, and transport.
+
 ## Phase 0: offline Hindi voice loop (2026-09-26)
 
 ### Device
@@ -91,13 +96,13 @@ Build: commit `3cc4fc6`.
 | 1 | क्या आप मेरी आवाज सुन पा रहे हो | 2.7 s / 2.6 s | 96 B vs 84 KB (900×) | 35 | 246 | 77 | 42 | 3 | 757 | **1160 ms** |
 
 - **Delivery:** 4 of 4 messages delivered, ACKed and played, with no losses or reconnects.
-- **RTT over the hotspot:** 49–68 ms (vs 3–6 ms over USB with the PC fake peer).
+- **RTT over the hotspot:** 49–85 ms in the raw outgoing rows (vs 3–6 ms over USB with the PC fake peer).
 - **The receiving phone's speed decides how fast you hear the reply.** The S25 synthesizes in about 150 ms; the M21 needs 660–760 ms for similar sentences.
   So S25 → M21 (about 1.2 s) is limited by the M21's TTS, and M21 → S25 (1.0–4.2 s) by the M21's STT.
 - **On the M21, STT dominates:** 3.3 s for 8 s of speech (about 2.4× real time) versus about 11× real time on the S25.
-  End-to-end latency on budget phones is therefore driven by STT, not the network (the network was 24–34 ms here).
-- **"Other" is higher on the M21** (122–358 ms vs about 50 ms on the S25). This is the time around recording stop and
-  hand-off on a slower CPU; worth profiling before the full run.
+  End-to-end latency on budget phones is therefore driven by STT, not the network (the network estimate was 24–42 ms here).
+- **"Other" varied on both phones:** 122–358 ms on the M21 and 77–301 ms on the S25 in these four outgoing rows.
+  This includes the time around recording stop and hand-off; more samples are needed to explain the variation.
 
 ### Still to do for the exit criterion
 - The full run: 10 sentences from `docs/phase1_sentences.md` each way, then STT accuracy against the reference text,

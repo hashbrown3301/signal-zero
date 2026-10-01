@@ -49,7 +49,7 @@ class DeviceListener(
     }
 
     override fun cancel() {
-        if (recorder.isRecording) recorder.stop()
+        recorder.discard()
     }
 }
 

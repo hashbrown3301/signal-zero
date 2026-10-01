@@ -52,6 +52,12 @@ class VadTrimmer(assets: AssetManager) {
             drain()
             i += WINDOW
         }
+        // Silero needs full windows. Keep the last partial frame instead of dropping up to
+        // 31 ms of speech; ranges below stay clamped to the original recording length.
+        if (i < samples.size) {
+            vad.acceptWaveform(samples.copyOfRange(i, samples.size).copyOf(WINDOW))
+            drain()
+        }
         vad.flush()
         drain()
 

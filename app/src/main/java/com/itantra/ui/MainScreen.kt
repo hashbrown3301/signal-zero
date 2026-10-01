@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,7 +39,7 @@ import com.itantra.ui.theme.Palette
  */
 @Composable
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
-    val ui by viewModel.state.collectAsState()
+    val ui by viewModel.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
 
     // Solo has nothing to set up: go straight to Talk. A link: go to Talk once, when it first connects.
@@ -86,25 +86,45 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     onStart = { mode, peer, link, name -> viewModel.startSession(mode, peer, link, name) },
                     onLeave = viewModel::leaveSession,
                     onOpenTalk = { tab = Tab.Talk },
+                    onOpenLanguages = { tab = Tab.Languages },
                     onSelectLanguage = viewModel::selectLanguage,
                 )
                 Tab.Talk -> TalkScreen(
                     ui = ui,
                     onPressStart = viewModel::onPressStart,
                     onPressEnd = viewModel::onPressEnd,
+                    onPressCancel = viewModel::onPressCancel,
+                    onSubmitText = viewModel::onSubmitText,
+                    onSetReviewBeforeSend = viewModel::onSetReviewBeforeSend,
+                    onConfirmDraft = viewModel::onConfirmDraft,
+                    onDiscardDraft = viewModel::onDiscardDraft,
+                    onRetryMessage = viewModel::onRetryMessage,
+                    onReplayMessage = viewModel::onReplayMessage,
+                    onSavePhrase = viewModel::savePhrase,
+                    onRemovePhrase = viewModel::removePhrase,
+                    onUsePhrase = viewModel::usePhrase,
                     onLeave = viewModel::leaveSession,
                     onInstallVoice = { tab = Tab.Languages },
                     onStartSolo = { viewModel.startSession(Mode.SOLO, "", Link.WIFI, "") },
                 )
                 Tab.Languages -> PacksScreen(
                     packs = ui.packs,
-                    onBack = { tab = Tab.Home },
                     onImport = viewModel::importPack,
                     onRescan = viewModel::openPacks,
                     onDelete = viewModel::deletePack,
                     onDownload = viewModel::downloadPack,
                     onCancelDownload = viewModel::cancelDownload,
                     onRefreshCatalog = viewModel::refreshCatalog,
+                    selectedLanguage = ui.myLanguage,
+                    listenLanguage = ui.listenLanguage,
+                    translation = ui.translation,
+                    loadingLanguage = ui.loadingLanguage,
+                    sessionActive = ui.mode != null,
+                    onSelectLanguage = viewModel::selectLanguage,
+                    onSelectListenLanguage = viewModel::selectListenLanguage,
+                    onDownloadTranslation = viewModel::downloadTranslationModel,
+                    onImportTranslation = viewModel::importTranslationModel,
+                    onCancelTranslationDownload = viewModel::cancelTranslationDownload,
                 )
                 Tab.Metrics -> MetricsScreen(ui)
             }
@@ -112,4 +132,3 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         BottomNav(current = tab, onSelect = { tab = it })
     }
 }
-

@@ -1,0 +1,8 @@
+# Optional desktop native-inference validation; never required for Android conversation.
+# Android and desktop custom SentencePiece ops use the same Extensions release.
+onnxruntime-extensions==0.13.0
+onnxruntime==1.23.2
+onnx==1.23.1
+# Used only to regenerate the ten-script golden tokenizer fixture.
+sentencepiece==0.2.1
+transformers==4.51.3

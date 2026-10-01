@@ -117,6 +117,7 @@ fun HomeScreen(
     onStart: (Mode, String, Link, String) -> Unit,
     onLeave: () -> Unit,
     onOpenTalk: () -> Unit,
+    onOpenLanguages: () -> Unit,
     onSelectLanguage: (String) -> Unit,
 ) {
     val stage = when {
@@ -134,6 +135,14 @@ fun HomeScreen(
             trailing = { LanguageChip(ui.myLanguage, ui.languages, ui.loadingLanguage, ui.mode == null, onSelectLanguage) },
         )
         StatusLine(ui.error, ui.loadingLanguage, ui.modelsReady)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Speak ${englishName(ui.myLanguage)} · Hear ${englishName(ui.listenLanguage)}",
+                style = MaterialTheme.typography.labelLarge, color = Palette.Accent,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onOpenLanguages) { Text("Languages") }
+        }
         // A stage on its way out keeps the data it had (HeldFadeSwap), so "Joining…" doesn't flash while End fades.
         HeldFadeSwap(stage, ui.toHomeState(), Modifier.fillMaxWidth(), label = "home-stage") { s, home ->
             when (s) {
@@ -277,7 +286,7 @@ private fun ConnectChooser(lastPeer: String, lastBtAddress: String, onStart: (Mo
                 else -> {
                     Overline("Solo · this phone only")
                     Text(
-                        "Speak and hear it back on this phone. Checks your microphone, language and voice. Nothing leaves this phone.",
+                        "Hold to talk, then release to translate and hear the result on this phone. Nothing leaves this phone.",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     PrimaryButton(onClick = { onStart(Mode.SOLO, "", Link.WIFI, "") }, modifier = Modifier.fillMaxWidth()) {
@@ -623,7 +632,7 @@ private fun LanguageChip(
                                 color = if (lang.iso == myLanguage) Palette.Accent else Palette.OffWhite)
                             Text(
                                 englishName(lang.iso) + when {
-                                    !lang.hasSpeak -> " · install its speak pack first"
+                                    !lang.hasSpeak -> " · type only; install speech for microphone"
                                     !lang.hasListen -> " · no voice"
                                     else -> ""
                                 },
@@ -631,7 +640,7 @@ private fun LanguageChip(
                             )
                         }
                     },
-                    enabled = lang.hasSpeak,
+                    enabled = true,
                     onClick = { open = false; onSelect(lang.iso) },
                 )
             }

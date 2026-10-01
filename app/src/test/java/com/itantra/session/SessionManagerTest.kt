@@ -117,6 +117,76 @@ class SessionManagerTest {
     }
 
     @Test
+    fun ackWithWrongTimestampOrLanguageCannotConfirmDelivery() = test {
+        val fake = FakeTransport()
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake,
+            minPressMs = 0, pingIntervalMs = 0).also { it.start() }
+        closeables += { sm.close() }
+        sm.talk()
+        val text = fake.sent.single { it.type == PacketType.TEXT }
+        fake.inbox.send(Packet(PacketType.ACK, text.seq, text.langCode, text.timestamp + 1,
+            Packet.ack(text, 1, 0).payload))
+        fake.inbox.send(Packet(PacketType.ACK, text.seq, Language.TAMIL.code, text.timestamp,
+            Packet.ack(text, 1, 0).payload))
+        delay(100)
+        assertEquals(Status.SENT, sm.state.value.messages.single().status)
+        fake.inbox.send(Packet.ack(text, 1, 0))
+        sm.state.first { it.messages.singleOrNull()?.status == Status.ACKED }
+    }
+
+    @Test
+    fun aConnectedPeerThatNeverAcksDoesNotLeaveMessagesSentForever() = test {
+        val fake = FakeTransport()
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake,
+            minPressMs = 0, pingIntervalMs = 0, ackTimeoutMs = 200).also { it.start() }
+        closeables += { sm.close() }
+        sm.talk()
+        val text = fake.sent.single { it.type == PacketType.TEXT }
+        val failed = sm.state.first { it.messages.singleOrNull()?.status == Status.FAILED }.messages.single()
+        assertEquals("Delivery was not confirmed. Please try again.", failed.error)
+        fake.inbox.send(Packet.ack(text, 1, 0))
+        delay(100)
+        assertEquals(Status.FAILED, sm.state.value.messages.single().status)
+    }
+
+    @Test
+    fun idleLinksSlowTheirPingsAfterLearningRtt() = test {
+        val fake = FakeTransport()
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake,
+            pingIntervalMs = 20, idlePingIntervalMs = 500, activeWindowMs = 0).also { it.start() }
+        closeables += { sm.close() }
+        val responder = scope.launch {
+            var answered = 0
+            while (true) {
+                val pings = fake.sent.filter { it.type == PacketType.PING }
+                while (answered < pings.size) fake.inbox.send(Packet.pong(pings[answered++]))
+                delay(5)
+            }
+        }
+        sm.state.first { it.rttMs != null }
+        delay(50) // allow the first RTT-aware ping iteration to begin
+        val before = fake.sent.count { it.type == PacketType.PING }
+        delay(200)
+        assertEquals(before, fake.sent.count { it.type == PacketType.PING })
+        responder.cancel()
+    }
+
+    @Test
+    fun pongWithWrongTimestampDoesNotCreateAnRttSample() = test {
+        val fake = FakeTransport()
+        val sm = SessionManager(scope, FakeListener(hindi), FakeSpeaker(), fake,
+            pingIntervalMs = 1_000).also { it.start() }
+        closeables += { sm.close() }
+        while (fake.sent.none { it.type == PacketType.PING }) delay(5)
+        val ping = fake.sent.first { it.type == PacketType.PING }
+        fake.inbox.send(Packet(PacketType.PONG, ping.seq, ping.langCode, ping.timestamp + 1))
+        delay(50)
+        assertNull(sm.state.value.rttMs)
+        fake.inbox.send(Packet.pong(ping))
+        sm.state.first { it.rttMs != null }
+    }
+
+    @Test
     fun incomingTextIsSpokenAndAckedWithTtsTime() = test {
         val speaker = FakeSpeaker(synthMs = 50)
         val (sm, peer) = session(speaker = speaker)

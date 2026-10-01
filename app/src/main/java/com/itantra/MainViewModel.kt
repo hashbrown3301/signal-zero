@@ -29,17 +29,32 @@ import com.itantra.comm.TcpTransport
 import com.itantra.comm.localIpv4Addresses
 import com.itantra.session.DeviceListener
 import com.itantra.session.DeviceSpeaker
+import com.itantra.session.ChunkedSpeaker
 import com.itantra.session.Direction
 import com.itantra.session.SessionManager
 import com.itantra.session.SessionState
 import com.itantra.session.Status
+import com.itantra.session.Phase
+import com.itantra.session.Listener
+import com.itantra.session.Heard
+import com.itantra.session.Translator
+import com.itantra.session.Translated
 import com.itantra.speech.SttEngine
 import com.itantra.speech.TtsEngine
 import com.itantra.speech.VadTrimmer
+import com.itantra.translation.OfflineTranslator
+import com.itantra.translation.TranslationModelSpec
+import com.itantra.translation.TranslationModelStore
+import com.itantra.translation.PhrasebookStore
+import com.itantra.translation.PhrasebookTranslator
+import com.itantra.translation.ReviewedPhrase
+import ai.onnxruntime.extensions.OrtxPackage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -50,7 +65,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.flow.first
 import com.itantra.speech.EngineFactory
 import com.itantra.speech.VoiceCache
 import com.itantra.comm.Language
@@ -80,6 +94,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     /** A pack download in progress (or failed, with [error]). */
     data class DownloadUi(val downloaded: Long = 0, val total: Long = 0, val error: String? = null)
+
+    data class TranslationUi(
+        val ready: Boolean = false,
+        val busy: Boolean = false,
+        val progress: Float? = null,
+        val message: String? = null,
+        val error: String? = null,
+        val modelSizeBytes: Long = TranslationModelSpec.totalBytes,
+        val deviceSupported: Boolean = true,
+        val canInstallWhileActive: Boolean = false,
+    )
 
     data class PacksUi(
         val builtIn: List<PackManifest> = emptyList(),
@@ -120,12 +145,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         val lastOutageMs: Long? = null,
         /** The language this phone speaks (ISO code of its speak pack), and which languages are installed. */
         val myLanguage: String = "hi",
+        /** All received and Solo speech is translated into this independently selected language. */
+        val listenLanguage: String = "hi",
+        val translation: TranslationUi = TranslationUi(),
         val languages: List<LanguageOption> = emptyList(),
         /** Language whose models are loading right now (switching languages), or null. */
         val loadingLanguage: String? = null,
         /** The "Language packs" screen is open (on top of the start screen). */
         val showPacks: Boolean = false,
         val packs: PacksUi = PacksUi(),
+        val phrasebook: List<ReviewedPhrase> = emptyList(),
+        val phrasebookError: String? = null,
         val session: SessionState = SessionState(),
     )
 
@@ -135,12 +165,39 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             lastPeer = prefs.getString(KEY_LAST_PEER, "").orEmpty(),
             lastBtAddress = prefs.getString(KEY_LAST_BT, "").orEmpty(),
             myLanguage = prefs.getString(KEY_MY_LANGUAGE, "hi") ?: "hi",
+            listenLanguage = prefs.getString(KEY_LISTEN_LANGUAGE, "hi") ?: "hi",
         )
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private val factory by lazy { EngineFactory(getApplication()) }
     private val packRepo by lazy { PackRepository(getApplication()) }
+    private val translationStore by lazy {
+        TranslationModelStore(File(app.filesDir, "translation"), File(app.cacheDir, "translation-downloads"))
+    }
+    private val translatorDelegate = lazy {
+        OfflineTranslator(translationStore, OrtxPackage::getLibraryPath) {
+            val info = ActivityManager.MemoryInfo()
+            app.getSystemService(ActivityManager::class.java)?.getMemoryInfo(info)
+            // Measured native loading peaks near 1.9 GiB; reserve room for speech and Android.
+            android.os.Process.is64Bit() && !lowRam && info.totalMem >= 3_000_000_000L &&
+                !info.lowMemory && info.availMem >= 2_500_000_000L
+        }
+    }
+    private val translator by translatorDelegate
+    private val phrasebookStore by lazy {
+        val file = File(app.filesDir, "phrases/reviewed.json")
+        synchronized(PHRASEBOOK_STORES) {
+            PHRASEBOOK_STORES.getOrPut(file.absolutePath) { PhrasebookStore(file) }
+        }
+    }
+    // The fallback itself is lazy: reviewed phrases work even when the native model cannot load.
+    private val conversationTranslator by lazy {
+        PhrasebookTranslator(phrasebookStore, object : Translator {
+            override suspend fun translate(text: String, source: Language, target: Language): Translated =
+                translator.translate(text, source, target)
+        })
+    }
     /** Guards [vad] and [stt]: held while they run and while they're released. Taken before [voiceLock] when both are needed. */
     private val engineLock = Mutex()
     /** Guards [voices]: held while a voice is looked up and synthesizes, and while voices are evicted or released. */
@@ -169,13 +226,15 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     }
     private var session: SessionManager? = null
     private var sessionJob: Job? = null
+    @Volatile private var speechReloadPending = false
 
     init {
         viewModelScope.launch {
+            refreshTranslation()
+            refreshPhrasebook()
             refreshLanguages()
             val saved = _state.value.myLanguage
-            val usable = _state.value.languages.any { it.iso == saved && it.hasSpeak }
-            loadLanguage(if (usable) saved else "hi")
+            loadLanguage(if (Language.fromIso(saved) != null) saved else "hi")
         }
         val link = if (handle.get<String>("link")?.lowercase() == "bt") Link.BLUETOOTH else Link.WIFI
         when (handle.get<String>("mode")?.lowercase()) {
@@ -191,11 +250,12 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     /** Rebuilds the language list from built-in + installed packs. */
     private suspend fun refreshLanguages() {
         val packs = withContext(Dispatchers.IO) { packRepo.builtIn() + packRepo.installed() }
-        val options = packs.groupBy { it.lang }.map { (iso, list) ->
-            val first = list.first()
-            LanguageOption(iso, first.name, first.native, first.packetCode,
+        val grouped = packs.groupBy { it.lang }
+        val options = Language.entries.map { language ->
+            val list = grouped[language.iso].orEmpty()
+            LanguageOption(language.iso, language.englishName, language.nativeName, language.code,
                 hasSpeak = list.any { it.isSpeak }, hasListen = list.any { it.isListen })
-        }.sortedBy { it.code }
+        }
         _state.update { it.copy(languages = options) }
     }
 
@@ -204,13 +264,30 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
      * and (if installed) listen pack. Only one STT is ever in memory (docs/PHASE3_PLAN.md).
      */
     fun selectLanguage(iso: String) {
-        if (_state.value.mode != null || _state.value.loadingLanguage != null) return
+        if (_state.value.mode != null || _state.value.loadingLanguage != null || Language.fromIso(iso) == null) return
         if (iso == _state.value.myLanguage && _state.value.modelsReady) return
         viewModelScope.launch { loadLanguage(iso) }
     }
 
+    fun selectListenLanguage(iso: String) {
+        if (_state.value.mode != null || Language.fromIso(iso) == null) return
+        prefs.edit().putString(KEY_LISTEN_LANGUAGE, iso).apply()
+        _state.update { it.copy(listenLanguage = iso) }
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                Language.fromIso(iso)?.let { lang -> voiceLock.withLock { voices.get(lang.code) } }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not preload $iso voice", e)
+                _state.update { it.copy(error = "Could not load the $iso voice: ${e.message}") }
+            }
+        }
+    }
+
     private suspend fun loadLanguage(iso: String) {
-        _state.update { it.copy(loadingLanguage = iso, modelsReady = false, error = null) }
+        prefs.edit().putString(KEY_MY_LANGUAGE, iso).apply()
+        _state.update { it.copy(myLanguage = iso, loadingLanguage = iso, modelsReady = false, error = null) }
         try {
             val took = withContext(Dispatchers.Default) {
                 engineLock.withLock {
@@ -228,7 +305,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     coroutineScope {
                         // Preload this language's voice so the first Solo reply is quick; it loads alongside the STT
                         // (independent native loads), so switching costs about max(STT, voice) instead of the sum.
-                        val voice = async { Language.fromIso(iso)?.let { voiceLock.withLock { voices.get(it.code) } } }
+                        val voice = async { Language.fromIso(_state.value.listenLanguage)?.let { voiceLock.withLock { voices.get(it.code) } } }
                         val t = SystemClock.elapsedRealtime()
                         stt = factory.stt(speak)
                         Log.i(TAG, "STT ${speak.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
@@ -245,7 +322,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         } catch (e: Exception) {
             Log.e(TAG, "Could not load language $iso", e)
             _state.update { it.copy(loadingLanguage = null, error = "Could not load $iso: ${e.message}") }
-            if (iso != "hi") loadLanguage("hi")  // fall back to the built-in language
+            // Keep the declared source language truthful. Typed input remains usable without ASR.
         }
     }
 
@@ -255,12 +332,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
      */
     fun startSession(mode: Mode, peer: String = "", link: Link = Link.WIFI, peerName: String = peer) {
         if (_state.value.mode != null) return
+        if (_state.value.translation.busy) {
+            _state.update { it.copy(error = "Finish or cancel the translation pack installation before starting a conversation") }
+            return
+        }
         val peerId = peer.trim()
         val bt = link == Link.BLUETOOTH && mode != Mode.SOLO
         if (mode == Mode.JOIN) prefs.edit().putString(if (bt) KEY_LAST_BT else KEY_LAST_PEER, peerId).apply()
         _state.update {
             it.copy(
                 mode = mode,
+                error = null,
                 link = if (mode == Mode.SOLO) Link.WIFI else link,
                 peer = peerId,
                 peerName = peerName,
@@ -270,63 +352,113 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             )
         }
         sessionJob = viewModelScope.launch {
-            _state.first { it.modelsReady && it.loadingLanguage == null }
-            val transport = try {
-                when {
-                    mode == Mode.SOLO -> null
-                    bt -> {
-                        val adapter = Bluetooth.adapter(getApplication())
-                            ?: error("This phone has no Bluetooth")
-                        if (mode == Mode.HOST) BluetoothTransport.host(adapter)
-                        else BluetoothTransport.join(adapter, peerId, peerName)
+            var unownedTransport: Transport? = null
+            var ownedSession: SessionManager? = null
+            try {
+                val transport = try {
+                    when {
+                        mode == Mode.SOLO -> null
+                        bt -> {
+                            val adapter = Bluetooth.adapter(getApplication())
+                                ?: error("This phone has no Bluetooth")
+                            if (mode == Mode.HOST) BluetoothTransport.host(adapter)
+                            else BluetoothTransport.join(adapter, peerId, peerName)
+                        }
+                        mode == Mode.HOST -> TcpTransport.host()
+                        else -> TcpTransport.join(peerId)
                     }
-                    mode == Mode.HOST -> TcpTransport.host()
-                    else -> TcpTransport.join(peerId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "Could not start the link", e)
+                    _state.update { it.copy(mode = null, error = "Could not start the link: ${e.message}") }
+                    return@launch
+                }
+                unownedTransport = transport
+                Log.i(TAG, "Session mode $mode over ${if (bt) "Bluetooth" else "Wi-Fi"}" +
+                    if (mode == Mode.JOIN) " → $peerName ($peerId)" else "")
+                val language = Language.fromIso(_state.value.myLanguage) ?: Language.HINDI
+                // Text conversations do not wait for recognition packs. Capture is admitted only when
+                // the chosen language's speech engines are ready; switching is blocked in a session.
+                val listener = object : Listener {
+                    private var active: DeviceListener? = null
+                    override fun start() {
+                        check(_state.value.modelsReady && _state.value.loadingLanguage == null) {
+                            "Speech is unavailable. Type a message or install this language's speech pack."
+                        }
+                        val capture = DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock,
+                            debugFile("debug_mic.wav"))
+                        active = capture
+                        try { capture.start() } catch (e: Exception) { active = null; throw e }
+                    }
+                    override suspend fun finish(): Heard {
+                        val capture = checkNotNull(active) { "No active microphone capture" }
+                        try { return capture.finish() } finally { active = null }
+                    }
+                    override fun cancel() {
+                        active?.cancel()
+                        active = null
+                    }
+                }
+                val sm = SessionManager(
+                    this,
+                    listener,
+                    ChunkedSpeaker(DeviceSpeaker(voiceLock, debugFile("tts_dump")) { code -> voices.get(code) }),
+                    transport,
+                    language = language,
+                    clock = SystemClock::elapsedRealtime,
+                    targetLanguage = Language.fromIso(_state.value.listenLanguage) ?: Language.HINDI,
+                    translator = conversationTranslator,
+                )
+                session = sm
+                ownedSession = sm
+                unownedTransport = null // SessionManager now owns the transport, including setup cancellation.
+                sm.setReviewBeforeSend(prefs.getBoolean(KEY_REVIEW_BEFORE_SEND, false))
+                sm.start()
+                val bench = BenchmarkLog(getApplication<Application>().filesDir, mode.name, if (bt) "bt" else "wifi",
+                    enabled = isDebugBuild())
+                if (transport != null) launch {
+                    try { trackLink(transport, bench) }
+                    catch (e: CancellationException) { throw e }
+                    catch (e: Exception) { Log.w(TAG, "Link diagnostics unavailable", e) }
+                }
+                if (mode == Mode.HOST && bt) {
+                    val name = runCatching { Bluetooth.adapter(getApplication())?.name }.getOrNull().orEmpty()
+                    _state.update { it.copy(ownBtName = name) }
+                }
+                if (mode == Mode.HOST && !bt) {
+                    // The hotspot may be switched on after the session starts, so keep refreshing.
+                    launch {
+                        while (true) {
+                            val addresses = withContext(Dispatchers.IO) {
+                                runCatching { localIpv4Addresses(wifiClientInterfaces()) }.getOrDefault(emptyList())
+                            }
+                            _state.update { it.copy(hostAddresses = addresses) }
+                            delay(3_000)
+                        }
+                    }
+                }
+                var logged = emptySet<String>()
+                sm.state.collect { s ->
+                    _state.update { it.copy(session = s, translation = it.translation.copy(
+                        canInstallWhileActive = s.phase == Phase.Ready && !s.speaking && !s.translating && s.queuedMessages == 0)) }
+                    logged = logNewEvents(s, logged, bench)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Could not start the link", e)
-                _state.update { it.copy(error = "Could not start the link: ${e.message}") }
-                return@launch
-            }
-            Log.i(TAG, "Session mode $mode over ${if (bt) "Bluetooth" else "Wi-Fi"}" +
-                if (mode == Mode.JOIN) " → $peerName ($peerId)" else "")
-            val language = Language.fromIso(_state.value.myLanguage) ?: Language.HINDI
-            // Read the engines under their lock: a language load may have been queued behind the one that finished.
-            val listener = engineLock.withLock {
-                DeviceListener(AudioRecorder(), checkNotNull(vad), checkNotNull(stt), engineLock, debugFile("debug_mic.wav"))
-            }
-            val sm = SessionManager(
-                this,
-                listener,
-                DeviceSpeaker(voiceLock, debugFile("tts_dump")) { code -> voices.get(code) },
-                transport,
-                language = language,
-                clock = SystemClock::elapsedRealtime,
-            )
-            session = sm
-            sm.start()
-            val bench = BenchmarkLog(getApplication<Application>().filesDir, mode.name, if (bt) "bt" else "wifi")
-            if (transport != null) launch { trackLink(transport, bench) }
-            if (mode == Mode.HOST && bt) {
-                val name = runCatching { Bluetooth.adapter(getApplication())?.name }.getOrNull().orEmpty()
-                _state.update { it.copy(ownBtName = name) }
-            }
-            if (mode == Mode.HOST && !bt) {
-                // The hotspot may be switched on after the session starts, so keep refreshing.
-                launch {
-                    while (true) {
-                        val addresses = withContext(Dispatchers.IO) { localIpv4Addresses(wifiClientInterfaces()) }
-                        _state.update { it.copy(hostAddresses = addresses) }
-                        delay(3_000)
-                    }
+                session?.close()
+                session = null
+                Log.e(TAG, "Conversation setup failed", e)
+                _state.update { it.copy(mode = null, error = "Could not start conversation: ${e.message}") }
+            } finally {
+                runCatching { unownedTransport?.close() }
+                runCatching { ownedSession?.close() }
+                if (ownedSession != null && session === ownedSession) {
+                    session = null
+                    _state.update { it.copy(mode = null, session = SessionState()) }
+                    releaseTranslationRuntime()
                 }
-            }
-            var logged = emptySet<String>()
-            sm.state.collect { s ->
-                _state.update { it.copy(session = s) }
-                logged = logNewEvents(s, logged, bench)
             }
         }
     }
@@ -421,6 +553,12 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 linkDownSince = null, reconnectedAt = null, lastOutageMs = null,
             )
         }
+        releaseTranslationRuntime()
+        if (speechReloadPending) {
+            speechReloadPending = false
+            _state.update { it.copy(modelsReady = false) }
+            viewModelScope.launch { loadLanguage(_state.value.myLanguage) }
+        }
     }
 
     // ---------- language packs ----------
@@ -432,6 +570,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         packAction { repo ->
             val results = repo.installIncoming()
             val ok = results.mapNotNull { it.getOrNull() }
+            ok.forEach { invalidateInstalledSpeechPack(it) }
             val failed = results.mapNotNull { it.exceptionOrNull()?.message }
             val lines = ok.map { "Installed ${it.name} (${it.kind}) from sideload" } + failed.map { "Rejected: $it" }
             if (lines.isEmpty()) null else lines.joinToString("\n") to failed.isNotEmpty()
@@ -441,31 +580,119 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     fun closePacks() = _state.update { it.copy(showPacks = false) }
 
     private var downloadJob: Job? = null
+    private var translationJob: Job? = null
+
+    private suspend fun refreshTranslation() {
+        val ready = try {
+            withContext(Dispatchers.IO) { translationStore.ready() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _state.update { it.copy(translation = it.translation.copy(error = e.message ?: "Translation storage unavailable")) }
+            false
+        }
+        val info = ActivityManager.MemoryInfo()
+        getApplication<Application>().getSystemService(ActivityManager::class.java)?.getMemoryInfo(info)
+        val supported = android.os.Process.is64Bit() && !lowRam && info.totalMem >= 3_000_000_000L
+        _state.update { it.copy(translation = it.translation.copy(ready = ready, deviceSupported = supported,
+            error = if (supported) it.translation.error else
+                "The general translation model requires a 64-bit phone with at least 4 GB RAM. Exact reviewed phrases work without it.")) }
+    }
+
+    fun downloadTranslationModel() = installTranslation(null)
+    fun importTranslationModel(uri: Uri) = installTranslation(uri)
+    fun cancelTranslationDownload() { translationJob?.cancel() }
+
+    private fun installTranslation(uri: Uri?) {
+        if (translationJob?.isActive == true || !_state.value.translation.deviceSupported) return
+        val pausedSession = session
+        if ((_state.value.mode != null && pausedSession == null) ||
+            (pausedSession != null && !pausedSession.beginPackMaintenance())) {
+            _state.update { it.copy(translation = it.translation.copy(
+                error = "Wait for recording, translation and playback to finish before installing the pack.")) }
+            return
+        }
+        _state.update {
+            it.copy(translation = it.translation.copy(busy = true, progress = null, error = null,
+                message = if (uri == null) "Downloading offline translation…" else "Verifying translation pack…"))
+        }
+        translationJob = viewModelScope.launch {
+            var message: String? = null
+            var error: String? = null
+            try {
+                val job = coroutineContext[Job]
+                if (translatorDelegate.isInitialized()) translator.release()
+                withContext(Dispatchers.IO) {
+                    if (uri == null) {
+                        translationStore.download { done, total ->
+                            _state.update {
+                                it.copy(translation = it.translation.copy(
+                                    progress = if (total > 0) done.toFloat() / total else null))
+                            }
+                            job?.isActive == true
+                        }
+                    } else {
+                        getApplication<Application>().contentResolver.openInputStream(uri)?.use {
+                            translationStore.importZip(it) { job?.isActive == true }
+                        } ?: error("Could not open translation pack")
+                    }
+                }
+                coroutineContext.ensureActive()
+                message = "Offline translation ready for all 10 languages"
+            } catch (e: CancellationException) {
+                message = if (uri == null) "Download cancelled; it can resume" else "Import cancelled"
+            } catch (e: PackDownloader.Cancelled) {
+                message = if (uri == null) "Download cancelled; it can resume" else "Import cancelled"
+            } catch (e: Exception) {
+                Log.w(TAG, "Translation pack installation failed", e)
+                error = e.message ?: "Could not install translation pack"
+            } finally {
+                val ready = withContext(NonCancellable + Dispatchers.IO) {
+                    try { translationStore.ready() }
+                    catch (e: Exception) {
+                        if (error == null) error = e.message ?: "Translation storage unavailable"
+                        false
+                    }
+                }
+                _state.update { it.copy(translation = it.translation.copy(
+                    ready = ready, busy = false, progress = null, message = message, error = error)) }
+                pausedSession?.endPackMaintenance()
+            }
+        }
+    }
 
     /** Downloads and installs pack [id]; progress shows on the Language packs screen. One download at a time. */
     fun downloadPack(id: String) {
         if (downloadJob?.isActive == true) return
         updateDownload(id) { DownloadUi() }
         downloadJob = viewModelScope.launch {
-            val job = coroutineContext[Job]
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    packRepo.downloadAndInstall(id) { done, total ->
-                        updateDownload(id) { it.copy(downloaded = done, total = total) }
-                        job?.isActive == true  // false = cancel
+            try {
+                val job = coroutineContext[Job]
+                val result = withContext(Dispatchers.IO) {
+                    runCatching {
+                        packRepo.downloadAndInstall(id) { done, total ->
+                            updateDownload(id) { it.copy(downloaded = done, total = total) }
+                            job?.isActive == true  // false = cancel
+                        }
                     }
                 }
-            }
-            result.onSuccess { m ->
-                _state.update { it.copy(packs = it.packs.copy(downloads = it.packs.downloads - id)) }
-                packAction { "Installed ${m.name} (${m.kind}), ${"%.1f".format(m.size / 1e6)} MB" to false }
-            }.onFailure { e ->
-                if (e is PackDownloader.Cancelled || e is kotlinx.coroutines.CancellationException) {
+                result.onSuccess { m ->
                     _state.update { it.copy(packs = it.packs.copy(downloads = it.packs.downloads - id)) }
-                } else {
-                    Log.w(TAG, "download $id failed", e)
-                    updateDownload(id) { it.copy(error = e.message ?: e.toString()) }
+                    packAction {
+                        invalidateInstalledSpeechPack(m)
+                        "Installed ${m.name} (${m.kind}), ${"%.1f".format(m.size / 1e6)} MB" to false
+                    }
+                }.onFailure { e ->
+                    if (e is PackDownloader.Cancelled || e is kotlinx.coroutines.CancellationException) {
+                        _state.update { it.copy(packs = it.packs.copy(downloads = it.packs.downloads - id)) }
+                    } else {
+                        Log.w(TAG, "download $id failed", e)
+                        updateDownload(id) { it.copy(error = e.message ?: e.toString()) }
+                    }
                 }
+            } catch (e: CancellationException) {
+                _state.update { it.copy(packs = it.packs.copy(downloads = it.packs.downloads - id)) }
+                throw e
             }
         }
     }
@@ -486,7 +713,21 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     fun importPack(uri: Uri) = packAction { repo ->
         val m = repo.installFromUri(uri)
+        invalidateInstalledSpeechPack(m)
         "Installed ${m.name} (${m.kind}), ${"%.1f".format(m.size / 1e6)} MB" to false
+    }
+
+    private suspend fun invalidateInstalledSpeechPack(pack: PackManifest) {
+        if (pack.isListen) withContext(Dispatchers.Default) { voiceLock.withLock { voices.evict(pack.packetCode) } }
+        if (pack.isSpeak && pack.lang == _state.value.myLanguage) {
+            if (_state.value.mode != null) {
+                // The active capture may still own STT; reload safely after its session closes.
+                speechReloadPending = true
+            } else {
+                speechReloadPending = false
+                loadLanguage(pack.lang)
+            }
+        }
     }
 
     fun deletePack(id: String) = packAction { repo ->
@@ -500,34 +741,55 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     }
 
     /** Runs [action] off the main thread, then refreshes the pack lists; errors become the screen's message. */
+    private var packActions = 0
+
     private fun packAction(action: suspend (PackRepository) -> Pair<String, Boolean>?) {
+        packActions++
         _state.update { it.copy(packs = it.packs.copy(busy = true)) }
         viewModelScope.launch {
-            val (message, isError) = withContext(Dispatchers.IO) {
-                try {
-                    action(packRepo) ?: (null to false)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w(TAG, "pack action failed", e)
-                    (e.message ?: e.toString()) to true
+            try {
+                val (message, isError) = withContext(Dispatchers.IO) {
+                    try {
+                        action(packRepo) ?: (null to false)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w(TAG, "pack action failed", e)
+                        (e.message ?: e.toString()) to true
+                    }
                 }
-            }
-            val (builtIn, installed, incoming) = withContext(Dispatchers.IO) {
-                Triple(packRepo.builtIn(), packRepo.installed(), packRepo.incomingDir?.absolutePath.orEmpty())
-            }
-            val catalog = withContext(Dispatchers.IO) { runCatching { packRepo.catalog().sorted }.getOrDefault(emptyList()) }
-            refreshLanguages()
-            val mine = _state.value.myLanguage
-            if (_state.value.mode == null && _state.value.loadingLanguage == null &&
-                _state.value.languages.none { it.iso == mine && it.hasSpeak }
-            ) loadLanguage("hi")
-            _state.update {
-                it.copy(
-                    packs = it.packs.copy(builtIn = builtIn, installed = installed, catalog = catalog, busy = false,
-                        message = message ?: it.packs.message,
-                        messageIsError = if (message != null) isError else it.packs.messageIsError, incomingPath = incoming),
-                )
+                val (builtIn, installed, incoming) = withContext(Dispatchers.IO) {
+                    Triple(packRepo.builtIn(), packRepo.installed(), packRepo.incomingDir?.absolutePath.orEmpty())
+                }
+                val catalog = withContext(Dispatchers.IO) { runCatching { packRepo.catalog().sorted }.getOrDefault(emptyList()) }
+                refreshLanguages()
+                val mine = _state.value.myLanguage
+                val hasSpeak = _state.value.languages.any { it.iso == mine && it.hasSpeak }
+                if (_state.value.mode == null && _state.value.loadingLanguage == null) {
+                    if (hasSpeak && !_state.value.modelsReady) loadLanguage(mine)
+                    else if (!hasSpeak && _state.value.modelsReady) {
+                        withContext(Dispatchers.Default) {
+                            engineLock.withLock { stt?.release(); stt = null }
+                        }
+                        _state.update { it.copy(modelsReady = false) }
+                    }
+                }
+                _state.update {
+                    it.copy(
+                        packs = it.packs.copy(builtIn = builtIn, installed = installed, catalog = catalog,
+                            message = message ?: it.packs.message,
+                            messageIsError = if (message != null) isError else it.packs.messageIsError, incomingPath = incoming),
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not refresh language packs", e)
+                _state.update { it.copy(packs = it.packs.copy(message = e.message ?: "Could not refresh language packs",
+                    messageIsError = true)) }
+            } finally {
+                packActions--
+                _state.update { it.copy(packs = it.packs.copy(busy = packActions > 0)) }
             }
         }
     }
@@ -536,7 +798,98 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     fun onPressEnd() = session?.pressEnd()
 
-    /** Logs each message once per status change, so logcat shows the whole conversation. */
+    fun onPressCancel() { session?.cancelPress() }
+
+    fun onForegroundLost() { onPressCancel() }
+
+    fun onForegroundGained() { viewModelScope.launch { refreshPhrasebook() } }
+
+    fun releaseTranslationRuntime() {
+        if (!translatorDelegate.isInitialized()) return
+        viewModelScope.launch(Dispatchers.Default) {
+            try { translator.release() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Log.w(TAG, "Could not release translation runtime", e) }
+        }
+    }
+
+    fun onSubmitText(text: String): Boolean {
+        SessionManager.inputError(text)?.let { error ->
+            _state.update { it.copy(error = error) }
+            return false
+        }
+        if (_state.value.translation.busy) {
+            _state.update { it.copy(error = "Finish or cancel the translation pack installation before sending text") }
+            return false
+        }
+        if (session == null && _state.value.mode == null) startSession(Mode.SOLO)
+        val current = session
+        if (current == null) {
+            _state.update { it.copy(error = "The conversation is starting. Your text has been kept; try Send again.") }
+            return false
+        }
+        return current.submitText(text)
+    }
+    fun onSetReviewBeforeSend(enabled: Boolean) {
+        if (session?.setReviewBeforeSend(enabled) == true) prefs.edit().putBoolean(KEY_REVIEW_BEFORE_SEND, enabled).apply()
+    }
+    fun onConfirmDraft(text: String) { session?.confirmDraft(text) }
+    fun onDiscardDraft() { session?.discardDraft() }
+    fun onRetryMessage(id: Int): Boolean = session?.retryMessage(id) ?: false
+    fun onReplayMessage(id: Int, allowUnsafe: Boolean): Boolean = session?.replayMessage(id, allowUnsafe) ?: false
+
+    private suspend fun refreshPhrasebook() {
+        try {
+            val entries = withContext(Dispatchers.IO) { phrasebookStore.list() }
+            _state.update { it.copy(phrasebook = entries, phrasebookError = null) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _state.update { it.copy(phrasebookError = e.message ?: "Could not read saved phrases") }
+        }
+    }
+
+    fun savePhrase(sourceIso: String, targetIso: String, sourceText: String, targetText: String,
+                  onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    phrasebookStore.upsert(requireNotNull(Language.fromIso(sourceIso)),
+                        requireNotNull(Language.fromIso(targetIso)), sourceText, targetText)
+                }
+                refreshPhrasebook()
+                onComplete(true)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(phrasebookError = e.message ?: "Could not save reviewed phrase") }
+                onComplete(false)
+            }
+        }
+    }
+
+    fun removePhrase(id: String) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { phrasebookStore.remove(id) }
+                refreshPhrasebook()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(phrasebookError = e.message ?: "Could not delete reviewed phrase") }
+            }
+        }
+    }
+
+    fun usePhrase(phrase: ReviewedPhrase): Boolean {
+        if (phrase.sourceIso != _state.value.myLanguage || phrase.targetIso != _state.value.listenLanguage) return false
+        return onSubmitText(phrase.sourceText)
+    }
+
+    private fun isDebugBuild(): Boolean =
+        getApplication<Application>().applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    /** Debug timing only; conversation contents never enter logcat. */
     private fun logNewEvents(s: SessionState, seen: Set<String>, bench: BenchmarkLog): Set<String> {
         val keys = s.messages.map { m -> "${m.id}:${m.status}" to m }
         for ((key, m) in keys) {
@@ -553,8 +906,8 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             }
             Log.i(
                 TAG, "$dir #${m.seq ?: "-"} ${m.status} ${m.wireBytes ?: "-"} B | vad=${m.vadMs} stt=${m.sttMs} " +
-                    "tts=${m.ttsMs} queue=${m.queueMs} ackAfter=${m.ackAfterMs} peerTts=${m.peerTtsMs} " +
-                    "peerQueue=${m.peerQueueMs} rtt=${m.rttMs} e2e=${m.endToEndMs} other=${m.otherMs} | ${m.text}"
+                    "translate=${m.translationMs} output=${m.outputLangCode} tts=${m.ttsMs} queue=${m.queueMs} ackAfter=${m.ackAfterMs} peerTts=${m.peerTtsMs} " +
+                    "peerQueue=${m.peerQueueMs} rtt=${m.rttMs} deliveryEstimate=${m.endToEndMs} other=${m.otherMs}"
             )
         }
         return keys.map { it.first }.toSet()
@@ -582,15 +935,20 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 stt = null
             }
             voiceLock.withLock { voices.clear() }
+            if (translatorDelegate.isInitialized()) translator.release()
         }
     }
 
     private companion object {
+        // A process-wide owner prevents different Activity ViewModels overwriting stale snapshots.
+        val PHRASEBOOK_STORES = mutableMapOf<String, PhrasebookStore>()
         const val TAG = "iTantra"
         const val KEY_LAST_PEER = "last_peer"
         const val KEY_LAST_BT = "last_bt_address"
         const val KEY_MY_LANGUAGE = "my_language"
+        const val KEY_LISTEN_LANGUAGE = "listen_language"
+        const val KEY_REVIEW_BEFORE_SEND = "review_before_send"
         // SENT is logged too, so a message that never gets an ACK (a loss) still leaves a row.
-        val LOGGED_STATUSES = setOf(Status.SENT, Status.ACKED, Status.FAILED, Status.PLAYED)
+        val LOGGED_STATUSES = setOf(Status.SENT, Status.ACKED, Status.FAILED, Status.PLAYED, Status.TRANSLATION_FAILED)
     }
 }

@@ -37,7 +37,13 @@ interface Speaker {
 }
 
 interface Prepared {
+    /** Synthesis needed before the first audio can start (also the value sent in the ACK). */
     val synthMs: Long
+
+    /** Total synthesis across all chunks, final after [play] completes. */
+    val totalSynthMs: Long get() = synthMs
+
+    val chunkCount: Int get() = 1
 
     /** Plays the audio and suspends until it has finished. */
     suspend fun play()

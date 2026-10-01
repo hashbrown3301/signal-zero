@@ -1,0 +1,2116 @@
+{
+    "schema_version": 1,
+    "started_at_utc": "2026-10-01T05:14:25.495955145Z",
+    "updated_at_utc": "2026-10-01T05:17:46.355522872Z",
+    "complete": true,
+    "successful": true,
+    "elapsed_ms": 200857.216146,
+    "measurement_scope": "Desktop cloud CPU: actual Kotlin translation stage only",
+    "limitations": [
+        "No Android phone, emulator, recognition, synthesis, audio, or network timing is measured.",
+        "Warm samples execute inference each time; OfflineTranslator's text-result cache is bypassed.",
+        "Cold load creates a new engine; operating-system file caches are not flushed.",
+        "VmHWM is cumulative process peak RSS, including the JVM and test libraries.",
+        "Percentiles use empirical nearest rank; five samples cannot characterize a reliable tail.",
+        "Numeric checks and raw outputs are regression evidence, not a multilingual accuracy score."
+    ],
+    "environment": {
+        "os": "Linux",
+        "architecture": "amd64",
+        "java_version": "17.0.20.1",
+        "app_commit": "46e68a6017577cdddc1abb1a6d2c4e6cabbced42",
+        "onnx_runtime": "1.27.0",
+        "jvm_available_processors": 2,
+        "cgroup_cpu_max": "200000 100000",
+        "cgroup_memory_limit_bytes": 8589934592
+    },
+    "model": {
+        "id": "nllb-200-distilled-600m-int8-v1",
+        "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+        "derived_decoder_sha256": "cb63d93b85e2bc45c0e5816a3177dfab9a7ef7361e77696773fd0191898b2da3",
+        "derived_decoder_already_present": true,
+        "configured_source_files": [
+            {
+                "name": "encoder_model_quantized.onnx",
+                "bytes": 419120483,
+                "sha256": "5cde664eacba07a62f198857ec6c06e09572b1ebb77c8137f1fa99ac604a3a28"
+            },
+            {
+                "name": "decoder_model_merged_quantized.onnx",
+                "bytes": 475505771,
+                "sha256": "dd66608c2a4194e78f95548fa0e64f24302303698c5b09fa8e1f9e16ec00676b"
+            },
+            {
+                "name": "sentencepiece.bpe.model",
+                "bytes": 4852054,
+                "sha256": "14bb8dfb35c0ffdea7bc01e56cea38b9e3d5efcdcb9c251d6b40538e1aab555a"
+            }
+        ],
+        "license": "CC BY-NC 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
+        "model_card_url": "https://huggingface.co/facebook/nllb-200-distilled-600M"
+    },
+    "configuration": {
+        "intra_op_threads": 2,
+        "inter_op_threads": 1,
+        "execution": "CPU sequential",
+        "optimization": "BASIC_OPT",
+        "cpu_arena": false,
+        "memory_pattern": false,
+        "prepacking": false,
+        "translation_result_cache": false,
+        "source_token_limit": 256,
+        "generated_token_limit": 256,
+        "repeats_per_case": 5,
+        "warmups_per_case": 1,
+        "case_count": 15,
+        "percentile_method": "nearest_rank"
+    },
+    "memory_before_load": {
+        "process_rss_bytes": 80863232,
+        "process_peak_rss_bytes": 80863232,
+        "java_heap_used_bytes": 17512360,
+        "java_heap_committed_bytes": 136314880,
+        "java_heap_limit_bytes": 536870912
+    },
+    "cold_load_ms": 5579.125684,
+    "memory_after_load": {
+        "process_rss_bytes": 1790341120,
+        "process_peak_rss_bytes": 2052251648,
+        "java_heap_used_bytes": 40797336,
+        "java_heap_committed_bytes": 296747008,
+        "java_heap_limit_bytes": 536870912
+    },
+    "first_translation": {
+        "case_id": "en-hi-short",
+        "translation_ms": 430.777361,
+        "output": "कृपया पानी लाओ।",
+        "memory_after": {
+            "process_rss_bytes": 1794129920,
+            "process_peak_rss_bytes": 2052251648,
+            "java_heap_used_bytes": 48137336,
+            "java_heap_committed_bytes": 296747008,
+            "java_heap_limit_bytes": 536870912
+        }
+    },
+    "cases": [
+        {
+            "id": "en-hi-short",
+            "source": "en",
+            "target": "hi",
+            "length": "short",
+            "input": "Please bring water.",
+            "input_codepoints": 19,
+            "input_whitespace_words": 3,
+            "input_numeric_tokens": [],
+            "quality_review_tags": [
+                "simple_request"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1800343552,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 52855904,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1820033024,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 93226096,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 384.925191,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 402.215537,
+                    "output": "कृपया पानी लाओ।",
+                    "output_codepoints": 15,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1801601024,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 67016616,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 393.995753,
+                    "output": "कृपया पानी लाओ।",
+                    "output_codepoints": 15,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1801895936,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 73308072,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 386.215746,
+                    "output": "कृपया पानी लाओ।",
+                    "output_codepoints": 15,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1807073280,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 80118880,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 374.129834,
+                    "output": "कृपया पानी लाओ।",
+                    "output_codepoints": 15,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1813528576,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 86410336,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 422.933501,
+                    "output": "कृपया पानी लाओ।",
+                    "output_codepoints": 15,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1819983872,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 93226096,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 393.995753,
+            "p90_ms": 422.933501,
+            "p95_ms": 422.933501,
+            "minimum_ms": 374.129834,
+            "maximum_ms": 422.933501,
+            "mean_ms": 395.8980742
+        },
+        {
+            "id": "en-hi-medium",
+            "source": "en",
+            "target": "hi",
+            "length": "medium",
+            "input": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+            "input_codepoints": 120,
+            "input_whitespace_words": 23,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1820811264,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 93750368,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1873268736,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 18188608,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 1590.812332,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 1600.742359,
+                    "output": "कृपया 25 बोतल पानी को स्टेशन में लाएं कल सुबह, 50 नहीं। मैं 10:30 बजे पहुंचने से पहले दरवाजा न खोलें।",
+                    "output_codepoints": 101,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1870786560,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 21296336,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 1595.467137,
+                    "output": "कृपया 25 बोतल पानी को स्टेशन में लाएं कल सुबह, 50 नहीं। मैं 10:30 बजे पहुंचने से पहले दरवाजा न खोलें।",
+                    "output_codepoints": 101,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1871347712,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 52753640,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 1593.978697,
+                    "output": "कृपया 25 बोतल पानी को स्टेशन में लाएं कल सुबह, 50 नहीं। मैं 10:30 बजे पहुंचने से पहले दरवाजा न खोलें।",
+                    "output_codepoints": 101,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1872621568,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 84210920,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 1808.338859,
+                    "output": "कृपया 25 बोतल पानी को स्टेशन में लाएं कल सुबह, 50 नहीं। मैं 10:30 बजे पहुंचने से पहले दरवाजा न खोलें।",
+                    "output_codepoints": 101,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1872674816,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 116192448,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 1711.369354,
+                    "output": "कृपया 25 बोतल पानी को स्टेशन में लाएं कल सुबह, 50 नहीं। मैं 10:30 बजे पहुंचने से पहले दरवाजा न खोलें।",
+                    "output_codepoints": 101,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1873260544,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 18188608,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 1600.742359,
+            "p90_ms": 1808.338859,
+            "p95_ms": 1808.338859,
+            "minimum_ms": 1593.978697,
+            "maximum_ms": 1808.338859,
+            "mean_ms": 1661.9792812
+        },
+        {
+            "id": "en-hi-long",
+            "source": "en",
+            "target": "hi",
+            "length": "long",
+            "input": "My name is Rohan. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet near the main entrance and check the tickets together before the train leaves.",
+            "input_codepoints": 249,
+            "input_whitespace_words": 46,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time",
+                "named_entity",
+                "multiple_sentences"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1873313792,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 18712880,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1881862144,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 123971608,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 3703.721147,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 3751.826643,
+                    "output": "मेरा नाम रोहन है. कृपया कल सुबह 50 नहीं बल्कि 25 बोतल पानी स्टेशन लाएं। ट्रेन 10:30 बजे आती है। मेरे आने से पहले दरवाजा मत खोलो। हम मुख्य प्रवेश द्वार के पास मिलेंगे और ट्रेन जाने से पहले टिकटों की जांच करेंगे।",
+                    "output_codepoints": 210,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1868902400,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 10719928,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 3667.151804,
+                    "output": "मेरा नाम रोहन है. कृपया कल सुबह 50 नहीं बल्कि 25 बोतल पानी स्टेशन लाएं। ट्रेन 10:30 बजे आती है। मेरे आने से पहले दरवाजा मत खोलो। हम मुख्य प्रवेश द्वार के पास मिलेंगे और ट्रेन जाने से पहले टिकटों की जांच करेंगे।",
+                    "output_codepoints": 210,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1868939264,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 71013024,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 5124.898624,
+                    "output": "मेरा नाम रोहन है. कृपया कल सुबह 50 नहीं बल्कि 25 बोतल पानी स्टेशन लाएं। ट्रेन 10:30 बजे आती है। मेरे आने से पहले दरवाजा मत खोलो। हम मुख्य प्रवेश द्वार के पास मिलेंगे और ट्रेन जाने से पहले टिकटों की जांच करेंगे।",
+                    "output_codepoints": 210,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1871495168,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 131830432,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 3184.000703,
+                    "output": "मेरा नाम रोहन है. कृपया कल सुबह 50 नहीं बल्कि 25 बोतल पानी स्टेशन लाएं। ट्रेन 10:30 बजे आती है। मेरे आने से पहले दरवाजा मत खोलो। हम मुख्य प्रवेश द्वार के पास मिलेंगे और ट्रेन जाने से पहले टिकटों की जांच करेंगे।",
+                    "output_codepoints": 210,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1881743360,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 63678272,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 2964.14704,
+                    "output": "मेरा नाम रोहन है. कृपया कल सुबह 50 नहीं बल्कि 25 बोतल पानी स्टेशन लाएं। ट्रेन 10:30 बजे आती है। मेरे आने से पहले दरवाजा मत खोलो। हम मुख्य प्रवेश द्वार के पास मिलेंगे और ट्रेन जाने से पहले टिकटों की जांच करेंगे।",
+                    "output_codepoints": 210,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1881862144,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 123971608,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 3667.151804,
+            "p90_ms": 5124.898624,
+            "p95_ms": 5124.898624,
+            "minimum_ms": 2964.14704,
+            "maximum_ms": 5124.898624,
+            "mean_ms": 3738.4049627999993
+        },
+        {
+            "id": "hi-en-short",
+            "source": "hi",
+            "target": "en",
+            "length": "short",
+            "input": "कृपया पानी लाओ।",
+            "input_codepoints": 15,
+            "input_whitespace_words": 3,
+            "input_numeric_tokens": [],
+            "quality_review_tags": [
+                "simple_request"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1881907200,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 125019992,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1883045888,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 28045368,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 378.666216,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 402.38672,
+                    "output": "Please bring water.",
+                    "output_codepoints": 19,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883041792,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 136554328,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 494.696579,
+                    "output": "Please bring water.",
+                    "output_codepoints": 19,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883045888,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 11792456,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 352.58613,
+                    "output": "Please bring water.",
+                    "output_codepoints": 19,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883045888,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 17035336,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 394.220866,
+                    "output": "Please bring water.",
+                    "output_codepoints": 19,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883045888,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 22802488,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 399.619235,
+                    "output": "Please bring water.",
+                    "output_codepoints": 19,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883045888,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 28045368,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 399.619235,
+            "p90_ms": 494.696579,
+            "p95_ms": 494.696579,
+            "minimum_ms": 352.58613,
+            "maximum_ms": 494.696579,
+            "mean_ms": 408.70190600000006
+        },
+        {
+            "id": "hi-en-medium",
+            "source": "hi",
+            "target": "en",
+            "length": "medium",
+            "input": "कृपया कल सुबह स्टेशन पर पानी की 25 बोतलें लाओ, 50 नहीं। मेरे 10:30 पर आने से पहले दरवाज़ा मत खोलो।",
+            "input_codepoints": 98,
+            "input_whitespace_words": 21,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1883090944,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 28663576,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1883136000,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 74838056,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 1676.046492,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 1642.813293,
+                    "output": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+                    "output_codepoints": 120,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883103232,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 87289952,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 1645.772705,
+                    "output": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+                    "output_codepoints": 120,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883107328,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 116650072,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 1629.684538,
+                    "output": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+                    "output_codepoints": 120,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883111424,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 16117784,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 1523.853914,
+                    "output": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+                    "output_codepoints": 120,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883127808,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 45477928,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 1609.344533,
+                    "output": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+                    "output_codepoints": 120,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1883136000,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 74313728,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 1629.684538,
+            "p90_ms": 1645.772705,
+            "p95_ms": 1645.772705,
+            "minimum_ms": 1523.853914,
+            "maximum_ms": 1645.772705,
+            "mean_ms": 1610.2937966000002
+        },
+        {
+            "id": "hi-en-long",
+            "source": "hi",
+            "target": "en",
+            "length": "long",
+            "input": "मेरा नाम रोहन है। कृपया कल सुबह स्टेशन पर पानी की 25 बोतलें लाओ, 50 नहीं। ट्रेन 10:30 पर आती है। मेरे आने से पहले दरवाज़ा मत खोलो। हम मुख्य प्रवेश द्वार के पास मिलेंगे और ट्रेन के जाने से पहले साथ में टिकटों की जाँच करेंगे।",
+            "input_codepoints": 223,
+            "input_whitespace_words": 47,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time",
+                "named_entity",
+                "multiple_sentences"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1883160576,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 74838056,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1874821120,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 58035224,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 3513.118707,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 3694.970875,
+                    "output": "My name is Rohn. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet at the main entrance and check the tickets together before the train leaves.",
+                    "output_codepoints": 246,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1873739776,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 68938632,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 3490.303534,
+                    "output": "My name is Rohn. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet at the main entrance and check the tickets together before the train leaves.",
+                    "output_codepoints": 246,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1874767872,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 130280368,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 3348.697634,
+                    "output": "My name is Rohn. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet at the main entrance and check the tickets together before the train leaves.",
+                    "output_codepoints": 246,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1874771968,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 63700152,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 3497.291171,
+                    "output": "My name is Rohn. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet at the main entrance and check the tickets together before the train leaves.",
+                    "output_codepoints": 246,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1874771968,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 125041872,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 3434.981371,
+                    "output": "My name is Rohn. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet at the main entrance and check the tickets together before the train leaves.",
+                    "output_codepoints": 246,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1874821120,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 58035224,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 3490.303534,
+            "p90_ms": 3694.970875,
+            "p95_ms": 3694.970875,
+            "minimum_ms": 3348.697634,
+            "maximum_ms": 3694.970875,
+            "mean_ms": 3493.248917
+        },
+        {
+            "id": "en-te-short",
+            "source": "en",
+            "target": "te",
+            "length": "short",
+            "input": "Please bring water.",
+            "input_codepoints": 19,
+            "input_whitespace_words": 3,
+            "input_numeric_tokens": [],
+            "quality_review_tags": [
+                "simple_request"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1875103744,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 59083608,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1875226624,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 111512400,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 527.482659,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 529.875114,
+                    "output": "దయచేసి నీరు తీసుకుని.",
+                    "output_codepoints": 21,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1875185664,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 76385088,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 492.242904,
+                    "output": "దయచేసి నీరు తీసుకుని.",
+                    "output_codepoints": 21,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1875185664,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 85298000,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 509.11626,
+                    "output": "దయచేసి నీరు తీసుకుని.",
+                    "output_codepoints": 21,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1875185664,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 93686608,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 535.144184,
+                    "output": "దయచేసి నీరు తీసుకుని.",
+                    "output_codepoints": 21,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1875214336,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 102599488,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 637.245684,
+                    "output": "దయచేసి నీరు తీసుకుని.",
+                    "output_codepoints": 21,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1875226624,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 111512400,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 529.875114,
+            "p90_ms": 637.245684,
+            "p95_ms": 637.245684,
+            "minimum_ms": 492.242904,
+            "maximum_ms": 637.245684,
+            "mean_ms": 540.7248292
+        },
+        {
+            "id": "en-te-medium",
+            "source": "en",
+            "target": "te",
+            "length": "medium",
+            "input": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+            "input_codepoints": 120,
+            "input_whitespace_words": 23,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1875263488,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 112036672,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1880354816,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 96374888,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 2226.452175,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 2061.023733,
+                    "output": "దయచేసి రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్కు తీసుకెళ్లండి. నేను 10:30 కి చేరే ముందు తలుపు తెరవకండి.",
+                    "output_codepoints": 107,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880186880,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 62963032,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 2090.217897,
+                    "output": "దయచేసి రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్కు తీసుకెళ్లండి. నేను 10:30 కి చేరే ముందు తలుపు తెరవకండి.",
+                    "output_codepoints": 107,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880313856,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 102808920,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 1935.077879,
+                    "output": "దయచేసి రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్కు తీసుకెళ్లండి. నేను 10:30 కి చేరే ముందు తలుపు తెరవకండి.",
+                    "output_codepoints": 107,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880342528,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 16158840,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 1986.666001,
+                    "output": "దయచేసి రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్కు తీసుకెళ్లండి. నేను 10:30 కి చేరే ముందు తలుపు తెరవకండి.",
+                    "output_codepoints": 107,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880354816,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 56004728,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 2181.68981,
+                    "output": "దయచేసి రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్కు తీసుకెళ్లండి. నేను 10:30 కి చేరే ముందు తలుపు తెరవకండి.",
+                    "output_codepoints": 107,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880354816,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 96374888,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 2061.023733,
+            "p90_ms": 2181.68981,
+            "p95_ms": 2181.68981,
+            "minimum_ms": 1935.077879,
+            "maximum_ms": 2181.68981,
+            "mean_ms": 2050.9350640000002
+        },
+        {
+            "id": "en-te-long",
+            "source": "en",
+            "target": "te",
+            "length": "long",
+            "input": "My name is Rohan. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet near the main entrance and check the tickets together before the train leaves.",
+            "input_codepoints": 249,
+            "input_whitespace_words": 46,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time",
+                "named_entity",
+                "multiple_sentences"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1880379392,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 97100760,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1880444928,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 57091480,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 4375.520083,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 4165.507917,
+                    "output": "నా పేరు రోహన్. రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్ కి తీసుకురావండి. రైలు 10:30 కి వస్తోంది. నేను వచ్చే ముందు తలుపులు తెరవకండి. మేము ప్రధాన ప్రవేశద్వారం దగ్గర కలుస్తాము. రైలు బయలుదేరే ముందు టిక్కెట్లను కలిసి తనిఖీ చేస్తాము.",
+                    "output_codepoints": 230,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1879539712,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 125234760,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 3992.765645,
+                    "output": "నా పేరు రోహన్. రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్ కి తీసుకురావండి. రైలు 10:30 కి వస్తోంది. నేను వచ్చే ముందు తలుపులు తెరవకండి. మేము ప్రధాన ప్రవేశద్వారం దగ్గర కలుస్తాము. రైలు బయలుదేరే ముందు టిక్కెట్లను కలిసి తనిఖీ చేస్తాము.",
+                    "output_codepoints": 230,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1879543808,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 76485016,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 3909.34524,
+                    "output": "నా పేరు రోహన్. రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్ కి తీసుకురావండి. రైలు 10:30 కి వస్తోంది. నేను వచ్చే ముందు తలుపులు తెరవకండి. మేము ప్రధాన ప్రవేశద్వారం దగ్గర కలుస్తాము. రైలు బయలుదేరే ముందు టిక్కెట్లను కలిసి తనిఖీ చేస్తాము.",
+                    "output_codepoints": 230,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1879547904,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 28212520,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 4132.608841,
+                    "output": "నా పేరు రోహన్. రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్ కి తీసుకురావండి. రైలు 10:30 కి వస్తోంది. నేను వచ్చే ముందు తలుపులు తెరవకండి. మేము ప్రధాన ప్రవేశద్వారం దగ్గర కలుస్తాము. రైలు బయలుదేరే ముందు టిక్కెట్లను కలిసి తనిఖీ చేస్తాము.",
+                    "output_codepoints": 230,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1879547904,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 105807144,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 4028.975503,
+                    "output": "నా పేరు రోహన్. రేపు ఉదయం 50 కి కాదు 25 బాటిల్ నీరు స్టేషన్ కి తీసుకురావండి. రైలు 10:30 కి వస్తోంది. నేను వచ్చే ముందు తలుపులు తెరవకండి. మేము ప్రధాన ప్రవేశద్వారం దగ్గర కలుస్తాము. రైలు బయలుదేరే ముందు టిక్కెట్లను కలిసి తనిఖీ చేస్తాము.",
+                    "output_codepoints": 230,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880444928,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 57091480,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 4028.975503,
+            "p90_ms": 4165.507917,
+            "p95_ms": 4165.507917,
+            "minimum_ms": 3909.34524,
+            "maximum_ms": 4165.507917,
+            "mean_ms": 4045.840629200001
+        },
+        {
+            "id": "en-or-short",
+            "source": "en",
+            "target": "or",
+            "length": "short",
+            "input": "Please bring water.",
+            "input_codepoints": 19,
+            "input_whitespace_words": 3,
+            "input_numeric_tokens": [],
+            "quality_review_tags": [
+                "simple_request"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1880473600,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 57615752,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1880535040,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 117925272,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 628.130012,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 557.372462,
+                    "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।",
+                    "output_codepoints": 20,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880526848,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 78587272,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 574.683919,
+                    "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।",
+                    "output_codepoints": 20,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880526848,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 88024456,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 634.870533,
+                    "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।",
+                    "output_codepoints": 20,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880526848,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 97985976,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 518.074463,
+                    "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।",
+                    "output_codepoints": 20,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880530944,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 107947400,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 615.639858,
+                    "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।",
+                    "output_codepoints": 20,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1880530944,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 117400984,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 574.683919,
+            "p90_ms": 634.870533,
+            "p95_ms": 634.870533,
+            "minimum_ms": 518.074463,
+            "maximum_ms": 634.870533,
+            "mean_ms": 580.128247
+        },
+        {
+            "id": "en-or-medium",
+            "source": "en",
+            "target": "or",
+            "length": "medium",
+            "input": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+            "input_codepoints": 120,
+            "input_whitespace_words": 23,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1880567808,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 118433160,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1897312256,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 122088096,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 2288.773918,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 2481.761744,
+                    "output": "ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳୁ ୫୦ ନହେଲେ ୨୫ ବୋତଲ ପାଣି ଷ୍ଟେସନରେ ଆଣନ୍ତୁ। ମୁଁ ୧୦.୩୦ରେ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ।",
+                    "output_codepoints": 112,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1882624000,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 75414504,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 2285.172738,
+                    "output": "ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳୁ ୫୦ ନହେଲେ ୨୫ ବୋତଲ ପାଣି ଷ୍ଟେସନରେ ଆଣନ୍ତୁ। ମୁଁ ୧୦.୩୦ରେ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ।",
+                    "output_codepoints": 112,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1882628096,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 118930440,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 2323.544904,
+                    "output": "ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳୁ ୫୦ ନହେଲେ ୨୫ ବୋତଲ ପାଣି ଷ୍ଟେସନରେ ଆଣନ୍ତୁ। ମୁଁ ୧୦.୩୦ରେ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ।",
+                    "output_codepoints": 112,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1882636288,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 35580560,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 2461.255648,
+                    "output": "ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳୁ ୫୦ ନହେଲେ ୨୫ ବୋତଲ ପାଣି ଷ୍ଟେସନରେ ଆଣନ୍ତୁ। ମୁଁ ୧୦.୩୦ରେ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ।",
+                    "output_codepoints": 112,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1897304064,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 79096504,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 2304.776738,
+                    "output": "ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳୁ ୫୦ ନହେଲେ ୨୫ ବୋତଲ ପାଣି ଷ୍ଟେସନରେ ଆଣନ୍ତୁ। ମୁଁ ୧୦.୩୦ରେ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ।",
+                    "output_codepoints": 112,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1897308160,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 122088096,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 2323.544904,
+            "p90_ms": 2481.761744,
+            "p95_ms": 2481.761744,
+            "minimum_ms": 2285.172738,
+            "maximum_ms": 2481.761744,
+            "mean_ms": 2371.3023544000002
+        },
+        {
+            "id": "en-or-long",
+            "source": "en",
+            "target": "or",
+            "length": "long",
+            "input": "My name is Rohan. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet near the main entrance and check the tickets together before the train leaves.",
+            "input_codepoints": 249,
+            "input_whitespace_words": 46,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time",
+                "named_entity",
+                "multiple_sentences"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1897406464,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 123161248,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1905311744,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 83328616,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 4115.404692,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 4247.038536,
+                    "output": "ମୋର ନାମ ରୋହନ. ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳେ ଷ୍ଟେସନରେ ୨୫ ବୋତଲ ପାଣି ଆଣନ୍ତୁ, ୫୦ ନୁହେଁ। ଟ୍ରେନ୍ ୧୦ଟା ୩୦ରେ ପହଞ୍ଚିବ। ମୁଁ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ। ଆମେ ମୁଖ୍ୟ ପ୍ରବେଶ ଦ୍ୱାର ନିକଟରେ ଭେଟିବା ଏବଂ ଟ୍ରେନ୍ ଛାଡ଼ିବା ପୂର୍ବରୁ ଟିକେଟ୍ ଯାଞ୍ଚ କରିବା।",
+                    "output_codepoints": 229,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905221632,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 24594488,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 4006.805526,
+                    "output": "ମୋର ନାମ ରୋହନ. ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳେ ଷ୍ଟେସନରେ ୨୫ ବୋତଲ ପାଣି ଆଣନ୍ତୁ, ୫୦ ନୁହେଁ। ଟ୍ରେନ୍ ୧୦ଟା ୩୦ରେ ପହଞ୍ଚିବ। ମୁଁ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ। ଆମେ ମୁଖ୍ୟ ପ୍ରବେଶ ଦ୍ୱାର ନିକଟରେ ଭେଟିବା ଏବଂ ଟ୍ରେନ୍ ଛାଡ଼ିବା ପୂର୍ବରୁ ଟିକେଟ୍ ଯାଞ୍ଚ କରିବା।",
+                    "output_codepoints": 229,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905229824,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 102713384,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 4043.829991,
+                    "output": "ମୋର ନାମ ରୋହନ. ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳେ ଷ୍ଟେସନରେ ୨୫ ବୋତଲ ପାଣି ଆଣନ୍ତୁ, ୫୦ ନୁହେଁ। ଟ୍ରେନ୍ ୧୦ଟା ୩୦ରେ ପହଞ୍ଚିବ। ମୁଁ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ। ଆମେ ମୁଖ୍ୟ ପ୍ରବେଶ ଦ୍ୱାର ନିକଟରେ ଭେଟିବା ଏବଂ ଟ୍ରେନ୍ ଛାଡ଼ିବା ପୂର୍ବରୁ ଟିକେଟ୍ ଯାଞ୍ଚ କରିବା।",
+                    "output_codepoints": 229,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905238016,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 53961168,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 4184.468628,
+                    "output": "ମୋର ନାମ ରୋହନ. ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳେ ଷ୍ଟେସନରେ ୨୫ ବୋତଲ ପାଣି ଆଣନ୍ତୁ, ୫୦ ନୁହେଁ। ଟ୍ରେନ୍ ୧୦ଟା ୩୦ରେ ପହଞ୍ଚିବ। ମୁଁ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ। ଆମେ ମୁଖ୍ୟ ପ୍ରବେଶ ଦ୍ୱାର ନିକଟରେ ଭେଟିବା ଏବଂ ଟ୍ରେନ୍ ଛାଡ଼ିବା ପୂର୍ବରୁ ଟିକେଟ୍ ଯାଞ୍ଚ କରିବା।",
+                    "output_codepoints": 229,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905303552,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 131555768,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 4139.368246,
+                    "output": "ମୋର ନାମ ରୋହନ. ଦୟାକରି ଆସନ୍ତାକାଲି ସକାଳେ ଷ୍ଟେସନରେ ୨୫ ବୋତଲ ପାଣି ଆଣନ୍ତୁ, ୫୦ ନୁହେଁ। ଟ୍ରେନ୍ ୧୦ଟା ୩୦ରେ ପହଞ୍ଚିବ। ମୁଁ ପହଞ୍ଚିବା ପୂର୍ବରୁ ଦ୍ୱାର ଖୋଲନ୍ତୁ ନାହିଁ। ଆମେ ମୁଖ୍ୟ ପ୍ରବେଶ ଦ୍ୱାର ନିକଟରେ ଭେଟିବା ଏବଂ ଟ୍ରେନ୍ ଛାଡ଼ିବା ପୂର୍ବରୁ ଟିକେଟ୍ ଯାଞ୍ଚ କରିବା।",
+                    "output_codepoints": 229,
+                    "numeric_tokens": [
+                        "25",
+                        "50",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905303552,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 83328616,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 4139.368246,
+            "p90_ms": 4247.038536,
+            "p95_ms": 4247.038536,
+            "minimum_ms": 4006.805526,
+            "maximum_ms": 4247.038536,
+            "mean_ms": 4124.302185400001
+        },
+        {
+            "id": "en-ta-short",
+            "source": "en",
+            "target": "ta",
+            "length": "short",
+            "input": "Please bring water.",
+            "input_codepoints": 19,
+            "input_whitespace_words": 3,
+            "input_numeric_tokens": [],
+            "quality_review_tags": [
+                "simple_request"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1905319936,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 84393560,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1905414144,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 22006040,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 716.509822,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 601.19087,
+                    "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்.",
+                    "output_codepoints": 37,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905360896,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 105872968,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 702.734054,
+                    "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்.",
+                    "output_codepoints": 37,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905377280,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 116883040,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 667.095854,
+                    "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்.",
+                    "output_codepoints": 37,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905377280,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 127368800,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 628.626299,
+                    "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்.",
+                    "output_codepoints": 37,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905377280,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 10996016,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 686.785359,
+                    "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்.",
+                    "output_codepoints": 37,
+                    "numeric_tokens": [],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905414144,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 22006040,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 667.095854,
+            "p90_ms": 702.734054,
+            "p95_ms": 702.734054,
+            "minimum_ms": 601.19087,
+            "maximum_ms": 702.734054,
+            "mean_ms": 657.2864872
+        },
+        {
+            "id": "en-ta-medium",
+            "source": "en",
+            "target": "ta",
+            "length": "medium",
+            "input": "Please bring 25 bottles of water to the station tomorrow morning, not 50. Do not open the door before I arrive at 10:30.",
+            "input_codepoints": 120,
+            "input_whitespace_words": 23,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1905422336,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 23071016,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1905553408,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 135419296,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 2239.817592,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 2053.284834,
+                    "output": "தயவுசெய்து நாளை காலை 50 அல்ல, 25 பாட்டில்கள் தண்ணீர் கொண்டு வந்து விடுங்கள். நான் 10:30 மணிக்கு வருவதற்கு முன் கதவைத் திறக்காதீர்கள்.",
+                    "output_codepoints": 133,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905467392,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 103270720,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 2145.74981,
+                    "output": "தயவுசெய்து நாளை காலை 50 அல்ல, 25 பாட்டில்கள் தண்ணீர் கொண்டு வந்து விடுங்கள். நான் 10:30 மணிக்கு வருவதற்கு முன் கதவைத் திறக்காதீர்கள்.",
+                    "output_codepoints": 133,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905471488,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 15357360,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 2141.644497,
+                    "output": "தயவுசெய்து நாளை காலை 50 அல்ல, 25 பாட்டில்கள் தண்ணீர் கொண்டு வந்து விடுங்கள். நான் 10:30 மணிக்கு வருவதற்கு முன் கதவைத் திறக்காதீர்கள்.",
+                    "output_codepoints": 133,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905475584,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 55203272,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 2099.759044,
+                    "output": "தயவுசெய்து நாளை காலை 50 அல்ல, 25 பாட்டில்கள் தண்ணீர் கொண்டு வந்து விடுங்கள். நான் 10:30 மணிக்கு வருவதற்கு முன் கதவைத் திறக்காதீர்கள்.",
+                    "output_codepoints": 133,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905532928,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 95573408,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 2122.471755,
+                    "output": "தயவுசெய்து நாளை காலை 50 அல்ல, 25 பாட்டில்கள் தண்ணீர் கொண்டு வந்து விடுங்கள். நான் 10:30 மணிக்கு வருவதற்கு முன் கதவைத் திறக்காதீர்கள்.",
+                    "output_codepoints": 133,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905549312,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 135419296,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 2122.471755,
+            "p90_ms": 2145.74981,
+            "p95_ms": 2145.74981,
+            "minimum_ms": 2053.284834,
+            "maximum_ms": 2145.74981,
+            "mean_ms": 2112.581988
+        },
+        {
+            "id": "en-ta-long",
+            "source": "en",
+            "target": "ta",
+            "length": "long",
+            "input": "My name is Rohan. Please bring 25 bottles of water to the station tomorrow morning, not 50. The train arrives at 10:30. Do not open the door before I arrive. We will meet near the main entrance and check the tickets together before the train leaves.",
+            "input_codepoints": 249,
+            "input_whitespace_words": 46,
+            "input_numeric_tokens": [
+                "25",
+                "50",
+                "10",
+                "30"
+            ],
+            "quality_review_tags": [
+                "quantities",
+                "negation",
+                "time",
+                "named_entity",
+                "multiple_sentences"
+            ],
+            "memory_before": {
+                "process_rss_bytes": 1905561600,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 136467872,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "memory_after": {
+                "process_rss_bytes": 1907724288,
+                "process_peak_rss_bytes": 2052251648,
+                "java_heap_used_bytes": 135446912,
+                "java_heap_committed_bytes": 296747008,
+                "java_heap_limit_bytes": 536870912
+            },
+            "warmup_ms": 4442.677837,
+            "samples": [
+                {
+                    "sample": 1,
+                    "translation_ms": 4565.766929,
+                    "output": "என் பெயர் ரோஹான். தயவுசெய்து நாளை காலை 50க்கு பதிலாக 25 பாட்டில்கள் தண்ணீர் கொண்டு வாருங்கள். ரயில் 10:30 மணிக்கு வருகிறது. நான் வருவதற்கு முன் கதவைத் திறக்காதீர்கள். நாங்கள் பிரதான நுழைவாயிலுக்கு அருகில் சந்திப்போம். ரயில் புறப்படுவதற்கு முன் டிக்கெட்டுகளை ஒன்றாக சரிபார்க்கலாம்.",
+                    "output_codepoints": 280,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1905631232,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 51030528,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 2,
+                    "translation_ms": 4959.937549,
+                    "output": "என் பெயர் ரோஹான். தயவுசெய்து நாளை காலை 50க்கு பதிலாக 25 பாட்டில்கள் தண்ணீர் கொண்டு வாருங்கள். ரயில் 10:30 மணிக்கு வருகிறது. நான் வருவதற்கு முன் கதவைத் திறக்காதீர்கள். நாங்கள் பிரதான நுழைவாயிலுக்கு அருகில் சந்திப்போம். ரயில் புறப்படுவதற்கு முன் டிக்கெட்டுகளை ஒன்றாக சரிபார்க்கலாம்.",
+                    "output_codepoints": 280,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1907707904,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 135440368,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 3,
+                    "translation_ms": 4434.562212,
+                    "output": "என் பெயர் ரோஹான். தயவுசெய்து நாளை காலை 50க்கு பதிலாக 25 பாட்டில்கள் தண்ணீர் கொண்டு வாருங்கள். ரயில் 10:30 மணிக்கு வருகிறது. நான் வருவதற்கு முன் கதவைத் திறக்காதீர்கள். நாங்கள் பிரதான நுழைவாயிலுக்கு அருகில் சந்திப்போம். ரயில் புறப்படுவதற்கு முன் டிக்கெட்டுகளை ஒன்றாக சரிபார்க்கலாம்.",
+                    "output_codepoints": 280,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1907707904,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 92982952,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 4,
+                    "translation_ms": 4271.367061,
+                    "output": "என் பெயர் ரோஹான். தயவுசெய்து நாளை காலை 50க்கு பதிலாக 25 பாட்டில்கள் தண்ணீர் கொண்டு வாருங்கள். ரயில் 10:30 மணிக்கு வருகிறது. நான் வருவதற்கு முன் கதவைத் திறக்காதீர்கள். நாங்கள் பிரதான நுழைவாயிலுக்கு அருகில் சந்திப்போம். ரயில் புறப்படுவதற்கு முன் டிக்கெட்டுகளை ஒன்றாக சரிபார்க்கலாம்.",
+                    "output_codepoints": 280,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1907712000,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 51037072,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                },
+                {
+                    "sample": 5,
+                    "translation_ms": 4412.706159,
+                    "output": "என் பெயர் ரோஹான். தயவுசெய்து நாளை காலை 50க்கு பதிலாக 25 பாட்டில்கள் தண்ணீர் கொண்டு வாருங்கள். ரயில் 10:30 மணிக்கு வருகிறது. நான் வருவதற்கு முன் கதவைத் திறக்காதீர்கள். நாங்கள் பிரதான நுழைவாயிலுக்கு அருகில் சந்திப்போம். ரயில் புறப்படுவதற்கு முன் டிக்கெட்டுகளை ஒன்றாக சரிபார்க்கலாம்.",
+                    "output_codepoints": 280,
+                    "numeric_tokens": [
+                        "50",
+                        "25",
+                        "10",
+                        "30"
+                    ],
+                    "numeric_tokens_preserved": true,
+                    "memory_after": {
+                        "process_rss_bytes": 1907720192,
+                        "process_peak_rss_bytes": 2052251648,
+                        "java_heap_used_bytes": 135446912,
+                        "java_heap_committed_bytes": 296747008,
+                        "java_heap_limit_bytes": 536870912
+                    }
+                }
+            ],
+            "completed_samples": 5,
+            "p50_ms": 4434.562212,
+            "p90_ms": 4959.937549,
+            "p95_ms": 4959.937549,
+            "minimum_ms": 4271.367061,
+            "maximum_ms": 4959.937549,
+            "mean_ms": 4528.867982000001
+        }
+    ],
+    "errors": [],
+    "final_process_memory": {
+        "process_rss_bytes": 858210304,
+        "process_peak_rss_bytes": 2052251648,
+        "java_heap_used_bytes": 136344224,
+        "java_heap_committed_bytes": 296747008,
+        "java_heap_limit_bytes": 536870912
+    }
+}

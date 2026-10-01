@@ -1,0 +1,1127 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-01T05:18:17.465708+00:00",
+  "environment": {
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpus": 3,
+    "affinity_cpus": 3,
+    "cgroup_cpu_max": "200000 100000",
+    "cgroup_memory_max": "8589934592",
+    "app_commit": "46e68a6017577cdddc1abb1a6d2c4e6cabbced42"
+  },
+  "sherpa_onnx_version": "1.13.7",
+  "scope": "Cloud Python CPU backend using prepared app Hindi models; not Android engine execution or phone performance.",
+  "accuracy_scope": "Synthetic Piper -> VAD -> STT roundtrip smoke check only, not real-human recognition accuracy or translation accuracy.",
+  "excludes": [
+    "translation",
+    "microphone capture and stop",
+    "button handling",
+    "network",
+    "Android dispatch",
+    "AudioTrack setup",
+    "audible playback",
+    "accuracy scoring"
+  ],
+  "measurement": {
+    "clock": "time.perf_counter",
+    "percentiles": "nearest rank",
+    "warmup_pipeline_runs_per_phrase_excluded_from_summary": 1,
+    "model_load_observations": 1,
+    "model_file_cache_state": "unknown",
+    "first_audio_metric": "first synthesized chunk samples ready; not audible speech",
+    "tts_input": "actual STT transcript, matching same-language Solo playback",
+    "chunk_synthesis": "sequential CPU synthesis only; no simulated concurrent audio playback",
+    "strict_scoring": "existing scorer: NFKC/casefold/whitespace, punctuation retained"
+  },
+  "parameters": {
+    "cloud_stt_threads": 2,
+    "cloud_tts_threads": 2,
+    "cloud_vad_threads": 1,
+    "android_engine_defaults": {
+      "stt_threads": 4,
+      "tts_threads": 4,
+      "vad_threads": 1
+    },
+    "stt_sample_rate": 16000,
+    "feature_dim": 80,
+    "decoding": "greedy_search",
+    "vad_threshold": 0.5,
+    "vad_min_silence_sec": 0.25,
+    "vad_min_speech_sec": 0.25,
+    "vad_max_speech_sec": 30,
+    "vad_window_samples": 512,
+    "vad_pad_samples": 1600,
+    "tts_sid": 0,
+    "tts_speed": 1.0,
+    "chunk_max_utf16_units": 140,
+    "chunk_min_sentence_utf16_units": 40
+  },
+  "files": {
+    "tts_model": {
+      "path": "app/src/main/assets/tts/hi_IN-priyamvada-medium.onnx",
+      "bytes": 63145178,
+      "sha256": "8871f3e07adb6ca490f8dbcd3956a8647c53c35b5d0a1c2a8d097b3bf721a31b"
+    },
+    "tts_tokens": {
+      "path": "app/src/main/assets/tts/tokens.txt",
+      "bytes": 940,
+      "sha256": "ef3a7e4a8d1af0c9d4dc45aaae1a6242ebe24a7ed6f3d025a49eb29682784c6d"
+    },
+    "stt_model": {
+      "path": "app/src/main/assets/stt/model.int8.onnx",
+      "bytes": 137677421,
+      "sha256": "a5225008cd4dd7d5a42095cd25900afa02baf64f93c3d7a9c322d3c52986ef89"
+    },
+    "stt_tokens": {
+      "path": "app/src/main/assets/stt/tokens.txt",
+      "bytes": 2700,
+      "sha256": "152e58dc9469feb8f74fb006245616ad7cd91b3f7a5ace72ec53f970db10c981"
+    },
+    "vad_model": {
+      "path": "app/src/main/assets/vad/silero_vad.onnx",
+      "bytes": 643854,
+      "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"
+    }
+  },
+  "source_logic": {
+    "chunks": {
+      "path": "app/src/main/java/com/itantra/session/ChunkedSpeaker.kt",
+      "bytes": 3004,
+      "sha256": "25fdd348074f3439c140ff71f3d569d99b24c170b545ce56201bcb4cb63384b8"
+    },
+    "vad": {
+      "path": "app/src/main/java/com/itantra/speech/VadTrimmer.kt",
+      "bytes": 3159,
+      "sha256": "7dc7474d4c528ac88d0627a9ba651cd7565d93dd7bdb74831210bf5c150e2191"
+    },
+    "stt": {
+      "path": "app/src/main/java/com/itantra/speech/SttEngine.kt",
+      "bytes": 1968,
+      "sha256": "58bee234620a999d4a6405502ea4cd6bfff32987b7986d4f54df107a37d74e1d"
+    },
+    "tts": {
+      "path": "app/src/main/java/com/itantra/speech/TtsEngine.kt",
+      "bytes": 2924,
+      "sha256": "a84748c6f8ee45d0e79cb318757fcdaa483c8ba8fdf4a8ec071dea7da9c934eb"
+    }
+  },
+  "model_load_ms": {
+    "tts_ms": 1296.7079919981188,
+    "stt_ms": 1606.0633689994575,
+    "vad_ms": 21.209097998507787
+  },
+  "memory": {
+    "before_model_load": {
+      "rss_bytes": 22151168,
+      "process_peak_rss_bytes": 22003712
+    },
+    "after_tts_load": {
+      "rss_bytes": 117555200,
+      "process_peak_rss_bytes": 117358592
+    },
+    "after_stt_load": {
+      "rss_bytes": 317317120,
+      "process_peak_rss_bytes": 317059072
+    },
+    "after_vad_load": {
+      "rss_bytes": 321204224,
+      "process_peak_rss_bytes": 320860160
+    },
+    "after_all_runs": {
+      "rss_bytes": 1064914944,
+      "process_peak_rss_bytes": 1064603648
+    }
+  },
+  "cases": {
+    "short": {
+      "reference": "नमस्ते मुझे पानी देना कृपया।",
+      "reference_words": 5,
+      "reference_chars": 28,
+      "input": {
+        "kind": "synthetic Piper Hindi, not human microphone speech",
+        "source_sample_rate": 22050,
+        "benchmark_sample_rate": 16000,
+        "resampling": "NumPy linear interpolation; synthetic smoke input only",
+        "source_generation_ms_excluded_from_pipeline": 352.8899540033308,
+        "input_samples": 41796,
+        "input_audio_sec": 2.61225
+      },
+      "warmup": {
+        "vad_ms": 17.5681809996604,
+        "vad_segments": 1,
+        "vad_ranges_samples": [
+          [
+            0,
+            41796
+          ]
+        ],
+        "speech_audio_sec": 2.61225,
+        "stt_ms": 501.135954997153,
+        "stt_rtf": 0.19184073308341584,
+        "transcript": "नमस्ते मुझे पानी देना कृपया",
+        "chunk_count": 1,
+        "chunks": [
+          "नमस्ते मुझे पानी देना कृपया"
+        ],
+        "tts_chunk_ms": [
+          204.60179499787046
+        ],
+        "tts_first_chunk_ms": 204.60179499787046,
+        "tts_total_synthesis_ms": 204.60179499787046,
+        "output_audio_sec": 2.5658049886621317,
+        "first_chunk_audio_sec": 2.5658049886621317,
+        "backend_first_audio_ready_ms": 730.7607850016211,
+        "result": "synthesized_samples_ready",
+        "synthetic_roundtrip_strict_cer_wer": {
+          "cer": 0.03571428571428571,
+          "wer": 0.2,
+          "character_errors": 1,
+          "reference_characters": 28,
+          "word_errors": 1,
+          "reference_words": 5
+        },
+        "memory_after_pipeline": {
+          "rss_bytes": 407736320,
+          "process_peak_rss_bytes": 408387584
+        }
+      },
+      "raw_runs": [
+        {
+          "vad_ms": 16.902471004868858,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              0,
+              41796
+            ]
+          ],
+          "speech_audio_sec": 2.61225,
+          "stt_ms": 565.165927997441,
+          "stt_rtf": 0.21635215924870937,
+          "transcript": "नमस्ते मुझे पानी देना कृपया",
+          "chunk_count": 1,
+          "chunks": [
+            "नमस्ते मुझे पानी देना कृपया"
+          ],
+          "tts_chunk_ms": [
+            214.79125100449892
+          ],
+          "tts_first_chunk_ms": 214.79125100449892,
+          "tts_total_synthesis_ms": 214.79125100449892,
+          "output_audio_sec": 2.5309750566893423,
+          "first_chunk_audio_sec": 2.5309750566893423,
+          "backend_first_audio_ready_ms": 801.0027810014435,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.03571428571428571,
+            "wer": 0.2,
+            "character_errors": 1,
+            "reference_characters": 28,
+            "word_errors": 1,
+            "reference_words": 5
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 430317568,
+            "process_peak_rss_bytes": 429965312
+          },
+          "run": 1
+        },
+        {
+          "vad_ms": 16.87051299813902,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              0,
+              41796
+            ]
+          ],
+          "speech_audio_sec": 2.61225,
+          "stt_ms": 500.7086179975886,
+          "stt_rtf": 0.19167714345778106,
+          "transcript": "नमस्ते मुझे पानी देना कृपया",
+          "chunk_count": 1,
+          "chunks": [
+            "नमस्ते मुझे पानी देना कृपया"
+          ],
+          "tts_chunk_ms": [
+            175.31858299480518
+          ],
+          "tts_first_chunk_ms": 175.31858299480518,
+          "tts_total_synthesis_ms": 175.31858299480518,
+          "output_audio_sec": 2.3568253968253967,
+          "first_chunk_audio_sec": 2.3568253968253967,
+          "backend_first_audio_ready_ms": 693.4962529994664,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.03571428571428571,
+            "wer": 0.2,
+            "character_errors": 1,
+            "reference_characters": 28,
+            "word_errors": 1,
+            "reference_words": 5
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 430833664,
+            "process_peak_rss_bytes": 430489600
+          },
+          "run": 2
+        },
+        {
+          "vad_ms": 16.416767000919208,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              0,
+              41796
+            ]
+          ],
+          "speech_audio_sec": 2.61225,
+          "stt_ms": 529.2691600043327,
+          "stt_rtf": 0.20261045459061447,
+          "transcript": "नमस्ते मुझे पानी देना कृपया",
+          "chunk_count": 1,
+          "chunks": [
+            "नमस्ते मुझे पानी देना कृपया"
+          ],
+          "tts_chunk_ms": [
+            213.58359800069593
+          ],
+          "tts_first_chunk_ms": 213.58359800069593,
+          "tts_total_synthesis_ms": 213.58359800069593,
+          "output_audio_sec": 2.48453514739229,
+          "first_chunk_audio_sec": 2.48453514739229,
+          "backend_first_audio_ready_ms": 761.4840300011565,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.03571428571428571,
+            "wer": 0.2,
+            "character_errors": 1,
+            "reference_characters": 28,
+            "word_errors": 1,
+            "reference_words": 5
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 431226880,
+            "process_peak_rss_bytes": 430882816
+          },
+          "run": 3
+        },
+        {
+          "vad_ms": 16.878144000656903,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              0,
+              41796
+            ]
+          ],
+          "speech_audio_sec": 2.61225,
+          "stt_ms": 510.0448779994622,
+          "stt_rtf": 0.19525117350922086,
+          "transcript": "नमस्ते मुझे पानी देना कृपया",
+          "chunk_count": 1,
+          "chunks": [
+            "नमस्ते मुझे पानी देना कृपया"
+          ],
+          "tts_chunk_ms": [
+            180.79885800398188
+          ],
+          "tts_first_chunk_ms": 180.79885800398188,
+          "tts_total_synthesis_ms": 180.79885800398188,
+          "output_audio_sec": 2.5193650793650795,
+          "first_chunk_audio_sec": 2.5193650793650795,
+          "backend_first_audio_ready_ms": 708.7501240021084,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.03571428571428571,
+            "wer": 0.2,
+            "character_errors": 1,
+            "reference_characters": 28,
+            "word_errors": 1,
+            "reference_words": 5
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 431226880,
+            "process_peak_rss_bytes": 430882816
+          },
+          "run": 4
+        },
+        {
+          "vad_ms": 16.911534999962896,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              0,
+              41796
+            ]
+          ],
+          "speech_audio_sec": 2.61225,
+          "stt_ms": 511.83781099825865,
+          "stt_rtf": 0.19593752933228392,
+          "transcript": "नमस्ते मुझे पानी देना कृपया",
+          "chunk_count": 1,
+          "chunks": [
+            "नमस्ते मुझे पानी देना कृपया"
+          ],
+          "tts_chunk_ms": [
+            176.86540100112325
+          ],
+          "tts_first_chunk_ms": 176.86540100112325,
+          "tts_total_synthesis_ms": 176.86540100112325,
+          "output_audio_sec": 2.48453514739229,
+          "first_chunk_audio_sec": 2.48453514739229,
+          "backend_first_audio_ready_ms": 706.5145570013556,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.03571428571428571,
+            "wer": 0.2,
+            "character_errors": 1,
+            "reference_characters": 28,
+            "word_errors": 1,
+            "reference_words": 5
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 431226880,
+            "process_peak_rss_bytes": 430882816
+          },
+          "run": 5
+        }
+      ],
+      "summary": {
+        "runs": 5,
+        "failed_runs": 0,
+        "metrics": {
+          "vad_ms": {
+            "count": 5,
+            "p50": 16.878144000656903,
+            "p90": 16.911534999962896,
+            "p95": 16.911534999962896,
+            "max": 16.911534999962896
+          },
+          "stt_ms": {
+            "count": 5,
+            "p50": 511.83781099825865,
+            "p90": 565.165927997441,
+            "p95": 565.165927997441,
+            "max": 565.165927997441
+          },
+          "stt_rtf": {
+            "count": 5,
+            "p50": 0.19593752933228392,
+            "p90": 0.21635215924870937,
+            "p95": 0.21635215924870937,
+            "max": 0.21635215924870937
+          },
+          "tts_first_chunk_ms": {
+            "count": 5,
+            "p50": 180.79885800398188,
+            "p90": 214.79125100449892,
+            "p95": 214.79125100449892,
+            "max": 214.79125100449892
+          },
+          "tts_total_synthesis_ms": {
+            "count": 5,
+            "p50": 180.79885800398188,
+            "p90": 214.79125100449892,
+            "p95": 214.79125100449892,
+            "max": 214.79125100449892
+          },
+          "backend_first_audio_ready_ms": {
+            "count": 5,
+            "p50": 708.7501240021084,
+            "p90": 801.0027810014435,
+            "p95": 801.0027810014435,
+            "max": 801.0027810014435
+          },
+          "speech_audio_sec": {
+            "count": 5,
+            "p50": 2.61225,
+            "p90": 2.61225,
+            "p95": 2.61225,
+            "max": 2.61225
+          },
+          "output_audio_sec": {
+            "count": 5,
+            "p50": 2.48453514739229,
+            "p90": 2.5309750566893423,
+            "p95": 2.5309750566893423,
+            "max": 2.5309750566893423
+          }
+        }
+      }
+    },
+    "medium": {
+      "reference": "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहाँ पहुँचने में कितना समय लगेगा।",
+      "reference_words": 21,
+      "reference_chars": 104,
+      "input": {
+        "kind": "synthetic Piper Hindi, not human microphone speech",
+        "source_sample_rate": 22050,
+        "benchmark_sample_rate": 16000,
+        "resampling": "NumPy linear interpolation; synthetic smoke input only",
+        "source_generation_ms_excluded_from_pipeline": 882.7776489997632,
+        "input_samples": 134654,
+        "input_audio_sec": 8.415875
+      },
+      "warmup": {
+        "vad_ms": 50.64387600577902,
+        "vad_segments": 1,
+        "vad_ranges_samples": [
+          [
+            1568,
+            134654
+          ]
+        ],
+        "speech_audio_sec": 8.317875,
+        "stt_ms": 1916.7583939997712,
+        "stt_rtf": 0.23043847064301531,
+        "transcript": "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा",
+        "chunk_count": 1,
+        "chunks": [
+          "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा"
+        ],
+        "tts_chunk_ms": [
+          719.3457289977232
+        ],
+        "tts_first_chunk_ms": 719.3457289977232,
+        "tts_total_synthesis_ms": 719.3457289977232,
+        "output_audio_sec": 8.075056689342404,
+        "first_chunk_audio_sec": 8.075056689342404,
+        "backend_first_audio_ready_ms": 2708.363095000095,
+        "result": "synthesized_samples_ready",
+        "synthetic_roundtrip_strict_cer_wer": {
+          "cer": 0.028846153846153848,
+          "wer": 0.14285714285714285,
+          "character_errors": 3,
+          "reference_characters": 104,
+          "word_errors": 3,
+          "reference_words": 21
+        },
+        "memory_after_pipeline": {
+          "rss_bytes": 640745472,
+          "process_peak_rss_bytes": 645394432
+        }
+      },
+      "raw_runs": [
+        {
+          "vad_ms": 49.489241995615885,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              1568,
+              134654
+            ]
+          ],
+          "speech_audio_sec": 8.317875,
+          "stt_ms": 1620.1525020005647,
+          "stt_rtf": 0.1947796164285427,
+          "transcript": "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा",
+          "chunk_count": 1,
+          "chunks": [
+            "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा"
+          ],
+          "tts_chunk_ms": [
+            700.6043119981769
+          ],
+          "tts_first_chunk_ms": 700.6043119981769,
+          "tts_total_synthesis_ms": 700.6043119981769,
+          "output_audio_sec": 8.205804988662132,
+          "first_chunk_audio_sec": 8.205804988662132,
+          "backend_first_audio_ready_ms": 2393.323448995943,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.028846153846153848,
+            "wer": 0.14285714285714285,
+            "character_errors": 3,
+            "reference_characters": 104,
+            "word_errors": 3,
+            "reference_words": 21
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 692740096,
+            "process_peak_rss_bytes": 695537664
+          },
+          "run": 1
+        },
+        {
+          "vad_ms": 44.53662599553354,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              1568,
+              134654
+            ]
+          ],
+          "speech_audio_sec": 8.317875,
+          "stt_ms": 1514.9444980052067,
+          "stt_rtf": 0.18213119312386958,
+          "transcript": "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा",
+          "chunk_count": 1,
+          "chunks": [
+            "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा"
+          ],
+          "tts_chunk_ms": [
+            586.244826001348
+          ],
+          "tts_first_chunk_ms": 586.244826001348,
+          "tts_total_synthesis_ms": 586.244826001348,
+          "output_audio_sec": 8.259954648526078,
+          "first_chunk_audio_sec": 8.259954648526078,
+          "backend_first_audio_ready_ms": 2150.252797997382,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.028846153846153848,
+            "wer": 0.14285714285714285,
+            "character_errors": 3,
+            "reference_characters": 104,
+            "word_errors": 3,
+            "reference_words": 21
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 692785152,
+            "process_peak_rss_bytes": 695537664
+          },
+          "run": 2
+        },
+        {
+          "vad_ms": 51.68033199879574,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              1568,
+              134654
+            ]
+          ],
+          "speech_audio_sec": 8.317875,
+          "stt_ms": 1399.1736049938481,
+          "stt_rtf": 0.16821286746841568,
+          "transcript": "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा",
+          "chunk_count": 1,
+          "chunks": [
+            "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा"
+          ],
+          "tts_chunk_ms": [
+            602.3841259957408
+          ],
+          "tts_first_chunk_ms": 602.3841259957408,
+          "tts_total_synthesis_ms": 602.3841259957408,
+          "output_audio_sec": 8.548390022675736,
+          "first_chunk_audio_sec": 8.548390022675736,
+          "backend_first_audio_ready_ms": 2056.9119490028243,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.028846153846153848,
+            "wer": 0.14285714285714285,
+            "character_errors": 3,
+            "reference_characters": 104,
+            "word_errors": 3,
+            "reference_words": 21
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 694075392,
+            "process_peak_rss_bytes": 695779328
+          },
+          "run": 3
+        },
+        {
+          "vad_ms": 48.80124899500515,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              1568,
+              134654
+            ]
+          ],
+          "speech_audio_sec": 8.317875,
+          "stt_ms": 1417.222566997225,
+          "stt_rtf": 0.17038276807444508,
+          "transcript": "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा",
+          "chunk_count": 1,
+          "chunks": [
+            "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा"
+          ],
+          "tts_chunk_ms": [
+            582.9458500011242
+          ],
+          "tts_first_chunk_ms": 582.9458500011242,
+          "tts_total_synthesis_ms": 582.9458500011242,
+          "output_audio_sec": 8.283038548752835,
+          "first_chunk_audio_sec": 8.283038548752835,
+          "backend_first_audio_ready_ms": 2052.8056510011083,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.028846153846153848,
+            "wer": 0.14285714285714285,
+            "character_errors": 3,
+            "reference_characters": 104,
+            "word_errors": 3,
+            "reference_words": 21
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 695508992,
+            "process_peak_rss_bytes": 696147968
+          },
+          "run": 4
+        },
+        {
+          "vad_ms": 50.97972800285788,
+          "vad_segments": 1,
+          "vad_ranges_samples": [
+            [
+              1568,
+              134654
+            ]
+          ],
+          "speech_audio_sec": 8.317875,
+          "stt_ms": 1239.130865993502,
+          "stt_rtf": 0.14897204706652864,
+          "transcript": "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा",
+          "chunk_count": 1,
+          "chunks": [
+            "कृपया मुझे बताइए कि रेलवे स्टेशन जाने का सबसे आसान रास्ता कौन सा है और वहां पहुंचने में कितना समय लगेगा"
+          ],
+          "tts_chunk_ms": [
+            574.773725005798
+          ],
+          "tts_first_chunk_ms": 574.773725005798,
+          "tts_total_synthesis_ms": 574.773725005798,
+          "output_audio_sec": 8.400997732426303,
+          "first_chunk_audio_sec": 8.400997732426303,
+          "backend_first_audio_ready_ms": 1867.8221570007736,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.028846153846153848,
+            "wer": 0.14285714285714285,
+            "character_errors": 3,
+            "reference_characters": 104,
+            "word_errors": 3,
+            "reference_words": 21
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 697810944,
+            "process_peak_rss_bytes": 697434112
+          },
+          "run": 5
+        }
+      ],
+      "summary": {
+        "runs": 5,
+        "failed_runs": 0,
+        "metrics": {
+          "vad_ms": {
+            "count": 5,
+            "p50": 49.489241995615885,
+            "p90": 51.68033199879574,
+            "p95": 51.68033199879574,
+            "max": 51.68033199879574
+          },
+          "stt_ms": {
+            "count": 5,
+            "p50": 1417.222566997225,
+            "p90": 1620.1525020005647,
+            "p95": 1620.1525020005647,
+            "max": 1620.1525020005647
+          },
+          "stt_rtf": {
+            "count": 5,
+            "p50": 0.17038276807444508,
+            "p90": 0.1947796164285427,
+            "p95": 0.1947796164285427,
+            "max": 0.1947796164285427
+          },
+          "tts_first_chunk_ms": {
+            "count": 5,
+            "p50": 586.244826001348,
+            "p90": 700.6043119981769,
+            "p95": 700.6043119981769,
+            "max": 700.6043119981769
+          },
+          "tts_total_synthesis_ms": {
+            "count": 5,
+            "p50": 586.244826001348,
+            "p90": 700.6043119981769,
+            "p95": 700.6043119981769,
+            "max": 700.6043119981769
+          },
+          "backend_first_audio_ready_ms": {
+            "count": 5,
+            "p50": 2056.9119490028243,
+            "p90": 2393.323448995943,
+            "p95": 2393.323448995943,
+            "max": 2393.323448995943
+          },
+          "speech_audio_sec": {
+            "count": 5,
+            "p50": 8.317875,
+            "p90": 8.317875,
+            "p95": 8.317875,
+            "max": 8.317875
+          },
+          "output_audio_sec": {
+            "count": 5,
+            "p50": 8.283038548752835,
+            "p90": 8.548390022675736,
+            "p95": 8.548390022675736,
+            "max": 8.548390022675736
+          }
+        }
+      }
+    },
+    "long": {
+      "reference": "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है, इसलिए कृपया एक गाड़ी बुला दीजिए। रास्ते में दवा की दुकान पर रुकना है और डॉक्टर को पिछली रिपोर्ट भी दिखानी है। यदि गाड़ी देर से आए तो मुझे तुरंत बताइए, ताकि मैं समय पर दूसरा रास्ता चुन सकूँ।",
+      "reference_words": 49,
+      "reference_chars": 238,
+      "input": {
+        "kind": "synthetic Piper Hindi, not human microphone speech",
+        "source_sample_rate": 22050,
+        "benchmark_sample_rate": 16000,
+        "resampling": "NumPy linear interpolation; synthetic smoke input only",
+        "source_generation_ms_excluded_from_pipeline": 1101.0617689971696,
+        "input_samples": 304007,
+        "input_audio_sec": 19.0004375
+      },
+      "warmup": {
+        "vad_ms": 110.92518400255358,
+        "vad_segments": 2,
+        "vad_ranges_samples": [
+          [
+            0,
+            39584
+          ],
+          [
+            39968,
+            304007
+          ]
+        ],
+        "speech_audio_sec": 18.9764375,
+        "stt_ms": 3408.387852003216,
+        "stt_rtf": 0.17961157630367744,
+        "transcript": "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ",
+        "chunk_count": 2,
+        "chunks": [
+          "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली ",
+          "रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ"
+        ],
+        "tts_chunk_ms": [
+          822.0630759969936,
+          483.8169810027466
+        ],
+        "tts_first_chunk_ms": 822.0630759969936,
+        "tts_total_synthesis_ms": 1305.8800569997402,
+        "output_audio_sec": 19.125714285714285,
+        "first_chunk_audio_sec": 11.193832199546485,
+        "backend_first_audio_ready_ms": 4364.000736997696,
+        "result": "synthesized_samples_ready",
+        "synthetic_roundtrip_strict_cer_wer": {
+          "cer": 0.0546218487394958,
+          "wer": 0.20408163265306123,
+          "character_errors": 13,
+          "reference_characters": 238,
+          "word_errors": 10,
+          "reference_words": 49
+        },
+        "memory_after_pipeline": {
+          "rss_bytes": 896471040,
+          "process_peak_rss_bytes": 900354048
+        }
+      },
+      "raw_runs": [
+        {
+          "vad_ms": 113.84185199858621,
+          "vad_segments": 2,
+          "vad_ranges_samples": [
+            [
+              0,
+              39584
+            ],
+            [
+              39968,
+              304007
+            ]
+          ],
+          "speech_audio_sec": 18.9764375,
+          "stt_ms": 3872.0157820062013,
+          "stt_rtf": 0.2040433449116148,
+          "transcript": "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ",
+          "chunk_count": 2,
+          "chunks": [
+            "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली ",
+            "रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ"
+          ],
+          "tts_chunk_ms": [
+            1253.9977699998417,
+            692.5202109996462
+          ],
+          "tts_first_chunk_ms": 1253.9977699998417,
+          "tts_total_synthesis_ms": 1946.517980999488,
+          "output_audio_sec": 19.25823129251701,
+          "first_chunk_audio_sec": 11.154467120181407,
+          "backend_first_audio_ready_ms": 5266.709154995624,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.0546218487394958,
+            "wer": 0.20408163265306123,
+            "character_errors": 13,
+            "reference_characters": 238,
+            "word_errors": 10,
+            "reference_words": 49
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 1062232064,
+            "process_peak_rss_bytes": 1063550976
+          },
+          "run": 1
+        },
+        {
+          "vad_ms": 123.82550499751233,
+          "vad_segments": 2,
+          "vad_ranges_samples": [
+            [
+              0,
+              39584
+            ],
+            [
+              39968,
+              304007
+            ]
+          ],
+          "speech_audio_sec": 18.9764375,
+          "stt_ms": 4036.280808999436,
+          "stt_rtf": 0.2126996075527578,
+          "transcript": "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ",
+          "chunk_count": 2,
+          "chunks": [
+            "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली ",
+            "रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ"
+          ],
+          "tts_chunk_ms": [
+            804.8318590008421,
+            618.7527610018151
+          ],
+          "tts_first_chunk_ms": 804.8318590008421,
+          "tts_total_synthesis_ms": 1423.5846200026572,
+          "output_audio_sec": 19.37392290249433,
+          "first_chunk_audio_sec": 11.110385487528344,
+          "backend_first_audio_ready_ms": 4973.7087190005695,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.0546218487394958,
+            "wer": 0.20408163265306123,
+            "character_errors": 13,
+            "reference_characters": 238,
+            "word_errors": 10,
+            "reference_words": 49
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 1063882752,
+            "process_peak_rss_bytes": 1064226816
+          },
+          "run": 2
+        },
+        {
+          "vad_ms": 122.71075700118672,
+          "vad_segments": 2,
+          "vad_ranges_samples": [
+            [
+              0,
+              39584
+            ],
+            [
+              39968,
+              304007
+            ]
+          ],
+          "speech_audio_sec": 18.9764375,
+          "stt_ms": 3144.5323189982446,
+          "stt_rtf": 0.16570719973115317,
+          "transcript": "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ",
+          "chunk_count": 2,
+          "chunks": [
+            "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली ",
+            "रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ"
+          ],
+          "tts_chunk_ms": [
+            760.1220780052245,
+            531.1106820008717
+          ],
+          "tts_first_chunk_ms": 760.1220780052245,
+          "tts_total_synthesis_ms": 1291.2327600060962,
+          "output_audio_sec": 19.073378684807256,
+          "first_chunk_audio_sec": 10.962630385487529,
+          "backend_first_audio_ready_ms": 4030.598639998061,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.0546218487394958,
+            "wer": 0.20408163265306123,
+            "character_errors": 13,
+            "reference_characters": 238,
+            "word_errors": 10,
+            "reference_words": 49
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 1064468480,
+            "process_peak_rss_bytes": 1064226816
+          },
+          "run": 3
+        },
+        {
+          "vad_ms": 106.65191799489548,
+          "vad_segments": 2,
+          "vad_ranges_samples": [
+            [
+              0,
+              39584
+            ],
+            [
+              39968,
+              304007
+            ]
+          ],
+          "speech_audio_sec": 18.9764375,
+          "stt_ms": 3070.174519001739,
+          "stt_rtf": 0.16178877194424607,
+          "transcript": "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ",
+          "chunk_count": 2,
+          "chunks": [
+            "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली ",
+            "रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ"
+          ],
+          "tts_chunk_ms": [
+            743.8735569958226,
+            483.81160700228065
+          ],
+          "tts_first_chunk_ms": 743.8735569958226,
+          "tts_total_synthesis_ms": 1227.6851639981032,
+          "output_audio_sec": 19.093968253968253,
+          "first_chunk_audio_sec": 11.02421768707483,
+          "backend_first_audio_ready_ms": 3924.2024030027096,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.0546218487394958,
+            "wer": 0.20408163265306123,
+            "character_errors": 13,
+            "reference_characters": 238,
+            "word_errors": 10,
+            "reference_words": 49
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 1064914944,
+            "process_peak_rss_bytes": 1064603648
+          },
+          "run": 4
+        },
+        {
+          "vad_ms": 108.18041399761569,
+          "vad_segments": 2,
+          "vad_ranges_samples": [
+            [
+              0,
+              39584
+            ],
+            [
+              39968,
+              304007
+            ]
+          ],
+          "speech_audio_sec": 18.9764375,
+          "stt_ms": 3157.638105993101,
+          "stt_rtf": 0.16639783447199197,
+          "transcript": "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ",
+          "chunk_count": 2,
+          "chunks": [
+            "आज सुबह मुझे अपने परिवार के साथ अस्पताल जाना है इसलिए कृपया एक गाड़ी बुला दीजिय रास्ते में दवा की दूकान पर रुकना है और डॉक्टर को पिछली ",
+            "रिपोर्ट भी दिखानी है यदि गाड़ी देरऐ आय तो मुझे तुरंत बताइए ताकि मैं समय आ दूसरा रास्ता चुन सकूँ"
+          ],
+          "tts_chunk_ms": [
+            736.82771899621,
+            551.3339190001716
+          ],
+          "tts_first_chunk_ms": 736.82771899621,
+          "tts_total_synthesis_ms": 1288.1616379963816,
+          "output_audio_sec": 19.473469387755102,
+          "first_chunk_audio_sec": 11.112834467120182,
+          "backend_first_audio_ready_ms": 4006.9873679967714,
+          "result": "synthesized_samples_ready",
+          "synthetic_roundtrip_strict_cer_wer": {
+            "cer": 0.0546218487394958,
+            "wer": 0.20408163265306123,
+            "character_errors": 13,
+            "reference_characters": 238,
+            "word_errors": 10,
+            "reference_words": 49
+          },
+          "memory_after_pipeline": {
+            "rss_bytes": 1064914944,
+            "process_peak_rss_bytes": 1064603648
+          },
+          "run": 5
+        }
+      ],
+      "summary": {
+        "runs": 5,
+        "failed_runs": 0,
+        "metrics": {
+          "vad_ms": {
+            "count": 5,
+            "p50": 113.84185199858621,
+            "p90": 123.82550499751233,
+            "p95": 123.82550499751233,
+            "max": 123.82550499751233
+          },
+          "stt_ms": {
+            "count": 5,
+            "p50": 3157.638105993101,
+            "p90": 4036.280808999436,
+            "p95": 4036.280808999436,
+            "max": 4036.280808999436
+          },
+          "stt_rtf": {
+            "count": 5,
+            "p50": 0.16639783447199197,
+            "p90": 0.2126996075527578,
+            "p95": 0.2126996075527578,
+            "max": 0.2126996075527578
+          },
+          "tts_first_chunk_ms": {
+            "count": 5,
+            "p50": 760.1220780052245,
+            "p90": 1253.9977699998417,
+            "p95": 1253.9977699998417,
+            "max": 1253.9977699998417
+          },
+          "tts_total_synthesis_ms": {
+            "count": 5,
+            "p50": 1291.2327600060962,
+            "p90": 1946.517980999488,
+            "p95": 1946.517980999488,
+            "max": 1946.517980999488
+          },
+          "backend_first_audio_ready_ms": {
+            "count": 5,
+            "p50": 4030.598639998061,
+            "p90": 5266.709154995624,
+            "p95": 5266.709154995624,
+            "max": 5266.709154995624
+          },
+          "speech_audio_sec": {
+            "count": 5,
+            "p50": 18.9764375,
+            "p90": 18.9764375,
+            "p95": 18.9764375,
+            "max": 18.9764375
+          },
+          "output_audio_sec": {
+            "count": 5,
+            "p50": 19.25823129251701,
+            "p90": 19.473469387755102,
+            "p95": 19.473469387755102,
+            "max": 19.473469387755102
+          }
+        }
+      }
+    }
+  }
+}
