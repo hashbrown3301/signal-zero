@@ -1,4 +1,4 @@
 onnx>=1.16
 huggingface_hub>=0.24
-# Only needed for test_models_pc.py (desktop sanity check)
+# Desktop speech checks and benchmark_speech_stages.py
 sherpa-onnx==1.13.7
