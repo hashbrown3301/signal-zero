@@ -1,13 +1,11 @@
 # iTantra
 
 Offline multilingual hold-to-talk voice translation app for Smart India Hackathon **SIH26173 (ISRO)**.
-Native Kotlin + Jetpack Compose, minSdk 26. Everything runs on the phone, with no internet.
+Native Kotlin + Jetpack Compose, minSdk 26. Conversations run on the phone without
+internet after model setup; ZIP imports also support offline provisioning.
 
-**Phase 0 (done):** hold to talk → Silero VAD → IndicConformer Hindi STT → transcript on screen → Piper Hindi TTS,
-with per-stage timings on screen. About 1.2 s from releasing the button to hearing the reply for a 20-word sentence on a Galaxy S25.
-See [BENCHMARKS.md](BENCHMARKS.md).
-
-**Phase 1 (in progress):** two phones exchanging text over Wi-Fi. See [docs/PHASE1_PLAN.md](docs/PHASE1_PLAN.md).
+Historical Hindi speech-loop phone measurements are in [BENCHMARKS.md](BENCHMARKS.md).
+They predate the current translation path and are not benchmarks of this build.
 
 **Upgradation:** lower first-audio delay through chunked voice synthesis, quieter idle
 links, stronger delivery checks, and direct language selection. The ten-language
@@ -23,6 +21,38 @@ Translation device/quality acceptance is in
 [docs/OFFLINE_TRANSLATION_VALIDATION.md](docs/OFFLINE_TRANSLATION_VALIDATION.md).
 Actual model/runtime cloud checks are in
 [docs/OFFLINE_TRANSLATION_RESULTS.md](docs/OFFLINE_TRANSLATION_RESULTS.md).
+
+## Review, reuse and recover
+
+- Turn on **Review speech** in Talk to edit the recognized source before any
+  translation or peer send. Confirm the draft or discard it. Leave it off for the
+  existing fast hold-to-talk flow. Cancelled gestures discard capture.
+- Model outputs with observable numeric-detail mismatches remain readable and
+  require **Play anyway** before speech. Checks preserve Unicode digits, signs,
+  decimals, percentages and times; they cannot certify meaning, names or negation.
+- Open **Reviewed phrases** to add, edit, delete or use an exact directional pair.
+  Saving requires editable source/target text and explicit user review. A match
+  bypasses the large native model, including on unsupported translator devices;
+  a miss still requires the ordinary model. Up to 200 pairs are stored locally.
+- Type a message when speech is unavailable. All ten source languages can be
+  selected without their recognition pack; install speech to enable the microphone.
+  **Retry** recovers retained source after a local failure. **Replay** uses the
+  retained target without translating again.
+
+In peer conversations, the receiving phone uses its own model or reviewed pairs;
+selecting a saved phrase does not transfer its saved target to another phone.
+An ACK confirms receiver handling of text, not that someone heard the audio.
+Capture is limited to 30 seconds and text to 1,000 characters, with explicit
+errors rather than silent truncation. General translation sessions are released
+after leaving a conversation or when Android reports memory pressure.
+
+The source audit, competitor comparison, four-feature implementation plan and
+five core product differentiators are in
+[RESEARCH_AND_PRODUCT_PLAN.md](docs/RESEARCH_AND_PRODUCT_PLAN.md).
+The repeatable public-reference evaluation is documented in
+[FLORES_EVALUATION.md](docs/FLORES_EVALUATION.md).
+Implemented features, executed checks, raw evaluation results and remaining
+release limits are in [PRODUCT_UPGRADE_RESULTS.md](docs/PRODUCT_UPGRADE_RESULTS.md).
 
 ## Models
 
@@ -77,7 +107,9 @@ adb logcat -s iTantra:* AndroidRuntime:E
   It supports all 90 directed pairs. The app loads one model lazily and caches repeat translations;
   it requires a 64-bit phone with at least 4 GB RAM and 2.5 GB free memory to load.
   Six GB RAM or more is recommended until device trials are complete. Two-GB low-RAM phones
-  keep recognition/same-language playback but cannot load this translation model.
+  keep recognition/same-language playback and exact reviewed phrases but cannot
+  load this translation model. Reviewed phrases provide limited known-pair use,
+  not unrestricted translation on low-memory hardware.
   Short phrases reduce decoding latency. No lag-free or improved-accuracy claim has been established.
 - In **Languages**, download the translation pack once or use **Import ZIP** with the generated
   `dist/translation/nllb-200-distilled-600m-int8-v1.zip`. Setup downloads verify pinned SHA-256s.

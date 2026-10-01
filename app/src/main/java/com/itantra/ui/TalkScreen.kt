@@ -21,14 +21,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,6 +54,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -60,8 +68,13 @@ import com.itantra.bluetooth.BtAvailability
 import com.itantra.bluetooth.rememberBluetoothState
 import com.itantra.comm.LinkState
 import com.itantra.session.Direction
+import com.itantra.session.InputOrigin
 import com.itantra.session.Message
+import com.itantra.session.Phase
+import com.itantra.session.SessionManager
 import com.itantra.session.Status
+import com.itantra.session.TranslationOrigin
+import com.itantra.translation.ReviewedPhrase
 import com.itantra.ui.components.BrandBar
 import com.itantra.ui.components.HoldToTalkButton
 import com.itantra.ui.components.LinkMotif
@@ -87,19 +100,36 @@ fun TalkScreen(
     ui: MainViewModel.UiState,
     onPressStart: () -> Boolean,
     onPressEnd: () -> Unit,
+    onPressCancel: () -> Unit,
+    onSubmitText: (String) -> Boolean,
+    onSetReviewBeforeSend: (Boolean) -> Unit,
+    onConfirmDraft: (String) -> Unit,
+    onDiscardDraft: () -> Unit,
+    onRetryMessage: (Int) -> Boolean,
+    onReplayMessage: (Int, Boolean) -> Boolean,
+    onSavePhrase: (String, String, String, String, (Boolean) -> Unit) -> Unit,
+    onRemovePhrase: (String) -> Unit,
+    onUsePhrase: (ReviewedPhrase) -> Boolean,
     onLeave: () -> Unit,
     onInstallVoice: () -> Unit,
     onStartSolo: () -> Unit,
 ) {
     val session = ui.session
     val context = LocalContext.current
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var permissionDenied by remember { mutableStateOf(false) }
+    var phrasebookOpen by rememberSaveable { mutableStateOf(false) }
+    var phraseEditor by rememberSaveable(stateSaver = PhraseEditorSeedSaver) { mutableStateOf<PhraseEditorSeed?>(null) }
+    var actionError by remember { mutableStateOf<String?>(null) }
+    // Speech-model readiness only gates the microphone; typed and exact phrase input are independent.
+    val canSubmit = session.phase == Phase.Ready && !session.speaking && !session.translating &&
+        (ui.mode == null || !ui.networked || ui.connected)
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionDenied = !granted
     }
     fun hasMicPermission() = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().imePadding()) {
         BrandBar(trailing = {
             if (ui.mode != null) {
                 val endSource = remember { MutableInteractionSource() }
@@ -115,11 +145,10 @@ fun TalkScreen(
         val notice = when {
             permissionDenied -> "Microphone permission is needed to hear you"
             btOff -> "Bluetooth is off or not allowed. Turn it on to reconnect."
-            ui.error != null -> ui.error
             else -> session.notice
         }
         Text(
-            "Speak ${englishName(ui.myLanguage)} · Hear ${englishName(ui.listenLanguage)} · Offline",
+            "Speak / type ${englishName(ui.myLanguage)} · Hear ${englishName(ui.listenLanguage)} · Offline",
             style = MaterialTheme.typography.labelLarge,
             color = Palette.Accent,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
@@ -130,13 +159,32 @@ fun TalkScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Install the translation pack to translate between languages.",
+                    "Use reviewed phrases, or install the pack for new translations.",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall,
                     color = Palette.TextMuted,
                 )
                 TextButton(onClick = onInstallVoice) { Text("Languages") }
             }
+        }
+        listOfNotNull(ui.error, actionError).distinct().filter { it != notice }.forEach { secondaryNotice ->
+            Text(secondaryNotice, style = MaterialTheme.typography.bodySmall, color = Palette.Mint, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = session.reviewBeforeSend,
+                    onCheckedChange = onSetReviewBeforeSend,
+                    enabled = ui.mode != null && session.phase == Phase.Ready,
+                    modifier = Modifier.semantics { contentDescription = "Review speech before sending or translating" },
+                )
+                Text("Review speech", style = MaterialTheme.typography.labelLarge)
+            }
+            TextButton(onClick = { phrasebookOpen = true }) { Text("Reviewed phrases") }
         }
         val shownNotice = rememberLastNonNull(notice)
         AnimatedVisibility(visible = notice != null, enter = RevealEnter, exit = RevealExit) {
@@ -154,34 +202,117 @@ fun TalkScreen(
             listenLanguage = ui.listenLanguage,
             onInstallVoice = onInstallVoice,
             onStartSolo = onStartSolo,
+            canAct = canSubmit && ui.mode != null,
+            onRetry = { id ->
+                if (!onRetryMessage(id)) actionError = "Could not retry yet. Wait for the current task or link, then try again."
+                else actionError = null
+            },
+            onReplay = { id, allowUnsafe ->
+                if (!onReplayMessage(id, allowUnsafe)) actionError = "Could not play yet. Wait for the current task, then try again."
+                else actionError = null
+            },
+            onSave = { phraseEditor = it },
             modifier = Modifier.fillMaxWidth().weight(1f),
         )
 
         NumbersRow(ui)
 
-        Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            val labels = ui.talkLabels()
-            HoldToTalkButton(
-                state = ui.talkButtonState(),
-                onPressStart = {
-                    if (!hasMicPermission()) {
-                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        false
-                    } else {
-                        permissionDenied = false
-                        onPressStart()
+        AnimatedVisibility(visible = !keyboardVisible, enter = RevealEnter, exit = RevealExit) {
+            Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                val labels = ui.talkLabels()
+                HoldToTalkButton(
+                    state = ui.talkButtonState(),
+                    onPressStart = {
+                        if (!hasMicPermission()) {
+                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            false
+                        } else {
+                            permissionDenied = false
+                            onPressStart()
+                        }
+                    },
+                    onPressEnd = onPressEnd,
+                    onPressCancel = onPressCancel,
+                    contentDescription = labels.first,
+                )
+                Crossfade(labels, animationSpec = Motion.enter(), label = "talk-labels") { (label, hint) ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+                        Text(hint, style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
                     }
-                },
-                onPressEnd = onPressEnd,
-                contentDescription = labels.first,
-            )
-            Crossfade(labels, animationSpec = Motion.enter(), label = "talk-labels") { (label, hint) ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
-                    Text(hint, style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+                }
+                if (session.queuedMessages > 0) {
+                    Text("${session.queuedMessages} phrases waiting", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
                 }
             }
         }
+        TypedComposer(
+            language = ui.myLanguage,
+            networked = ui.networked,
+            hasSession = ui.mode != null,
+            enabled = canSubmit,
+            onSubmit = { text ->
+                val accepted = onSubmitText(text)
+                actionError = if (accepted) null else "Text kept. Wait for the conversation or current task, then try again."
+                accepted
+            },
+        )
+    }
+
+    // The session owns the draft; its removal, rather than a local flag, closes source review.
+    session.draft?.let { ReviewDraftDialog(it, ui.networked, session.notice, onConfirmDraft, onDiscardDraft) }
+    if (session.draft == null) {
+        phraseEditor?.let { seed ->
+            ReviewedPhraseEditor(seed, ui.phrasebookError, onDismiss = { phraseEditor = null }, onSave = onSavePhrase)
+        }
+        if (phrasebookOpen && phraseEditor == null) {
+            PhrasebookDialog(
+                entries = ui.phrasebook,
+                error = ui.phrasebookError,
+                sourceIso = ui.myLanguage,
+                targetIso = ui.listenLanguage,
+                networked = ui.networked,
+                hasSession = ui.mode != null,
+                canUse = canSubmit,
+                onDismiss = { phrasebookOpen = false },
+                onEdit = { phraseEditor = it },
+                onRemove = onRemovePhrase,
+                onUse = onUsePhrase,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TypedComposer(
+    language: String,
+    networked: Boolean,
+    hasSession: Boolean,
+    enabled: Boolean,
+    onSubmit: (String) -> Boolean,
+) {
+    var text by rememberSaveable(language) { mutableStateOf("") }
+    val validationError = SessionManager.inputError(text)
+    Row(
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text("Type · ${englishName(language)}") },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = scriptFont(language)),
+            minLines = 1,
+            maxLines = 3,
+            isError = text.isNotEmpty() && validationError != null,
+            supportingText = { if (text.isNotEmpty()) validationError?.let { Text(it) } },
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(
+            onClick = { if (onSubmit(text)) text = "" },
+            enabled = enabled && validationError == null,
+        ) { Text(if (networked) "Send" else if (hasSession) "Translate" else "Solo") }
     }
 }
 
@@ -198,6 +329,10 @@ private fun Transcript(
     listenLanguage: String,
     onInstallVoice: () -> Unit,
     onStartSolo: () -> Unit,
+    canAct: Boolean,
+    onRetry: (Int) -> Unit,
+    onReplay: (Int, Boolean) -> Unit,
+    onSave: (PhraseEditorSeed) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -236,7 +371,7 @@ private fun Transcript(
         }
         items(messages, key = { it.id }) { m ->
             Box(Modifier.animateItem(fadeInSpec = Motion.enter(), placementSpec = Motion.gentle(), fadeOutSpec = Motion.exit())) {
-                TranscriptLine(m, myLanguage, onInstallVoice)
+                TranscriptLine(m, myLanguage, onInstallVoice, canAct, onRetry, onReplay, onSave)
             }
         }
     }
@@ -332,12 +467,12 @@ private fun EmptyHint(mode: Mode?, myLanguage: String, listenLanguage: String, o
                 SecondaryButton(onClick = onStartSolo) { Text("Start Solo") }
             } else {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text("Hold the button and speak ", style = MaterialTheme.typography.bodyLarge, color = Palette.TextMuted)
+                    Text("Speak or type ", style = MaterialTheme.typography.bodyLarge, color = Palette.TextMuted)
                     Text(nativeName(myLanguage), fontFamily = scriptFont(myLanguage), style = MaterialTheme.typography.bodyLarge, color = Palette.Mint)
                 }
                 Text(
-                    if (mode == Mode.SOLO) "Release to translate into ${englishName(listenLanguage)} on this phone."
-                    else "Release to send. Incoming messages translate into ${englishName(listenLanguage)} on this phone.",
+                    if (mode == Mode.SOLO) "Hold to talk, or type below. Translate into ${englishName(listenLanguage)} on this phone."
+                    else "Hold to talk, or type below. Incoming messages translate into ${englishName(listenLanguage)} on this phone.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Palette.TextMuted,
                 )
@@ -352,13 +487,27 @@ private val MarkerWidth = 2.dp
 
 /** One message: plain text with a thin marker line, its language in its own script, and its state. */
 @Composable
-private fun TranscriptLine(m: Message, myLanguage: String, onInstallVoice: () -> Unit) {
+private fun TranscriptLine(
+    m: Message,
+    myLanguage: String,
+    onInstallVoice: () -> Unit,
+    canAct: Boolean,
+    onRetry: (Int) -> Unit,
+    onReplay: (Int, Boolean) -> Unit,
+    onSave: (PhraseEditorSeed) -> Unit,
+) {
     val mine = m.direction != Direction.INCOMING
     val iso = isoOf(m.langCode) ?: myLanguage
     val outputIso = isoOf(m.outputLangCode) ?: iso
     val translationFailed = m.status == Status.TRANSLATION_FAILED || m.translationError != null
     val translatedText = m.translatedText?.takeIf { it.isNotBlank() && !translationFailed }
     val requestedTranslation = m.outputLangCode != null && m.outputLangCode != m.langCode
+    val localOrReceived = m.direction != Direction.OUTGOING
+    val retryEligible = localOrReceived && m.status in listOf(Status.FAILED, Status.TRANSLATION_FAILED, Status.NO_VOICE)
+    val hasReplayText = translatedText != null || (m.outputLangCode != null && m.outputLangCode == m.langCode && !translationFailed)
+    val replayEligible = localOrReceived && hasReplayText && m.status in listOf(Status.PLAYED, Status.FAILED, Status.NO_VOICE, Status.NEEDS_REVIEW)
+    val explicitPlayback = m.warnings.isNotEmpty() && m.translationOrigin != TranslationOrigin.REVIEWED_PHRASE
+    val canSave = localOrReceived && requestedTranslation && isoOf(m.langCode) != null && isoOf(m.outputLangCode) != null
     var expanded by rememberSaveable(m.id) { mutableStateOf(false) }
     val tapSource = remember { MutableInteractionSource() }
     val markerColor = if (mine) Palette.Teal else Palette.Accent
@@ -401,9 +550,19 @@ private fun TranscriptLine(m: Message, myLanguage: String, onInstallVoice: () ->
                 textAlign = textAlign,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            m.originalTranscript?.takeIf { it != m.text }?.let { original ->
+                Text(
+                    "Heard before correction: $original",
+                    fontFamily = scriptFont(iso),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.TextMuted,
+                    textAlign = textAlign,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
             if (translatedText != null) {
                 Text(
-                    "Translation · ${nativeName(outputIso)}",
+                    (if (m.translationOrigin == TranslationOrigin.REVIEWED_PHRASE) "Reviewed phrase · " else "Translation · ") + nativeName(outputIso),
                     style = MaterialTheme.typography.labelMedium,
                     fontFamily = scriptFont(outputIso),
                     color = Palette.Accent,
@@ -414,6 +573,20 @@ private fun TranscriptLine(m: Message, myLanguage: String, onInstallVoice: () ->
                     style = MaterialTheme.typography.titleLarge,
                     fontFamily = scriptFont(outputIso),
                     color = Palette.OffWhite,
+                    textAlign = textAlign,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            if (m.warnings.isNotEmpty()) {
+                Text("Check numeric details", style = MaterialTheme.typography.labelLarge, color = Palette.Mint, modifier = Modifier.padding(top = 8.dp))
+                m.warnings.forEach { warning ->
+                    Text(warning, style = MaterialTheme.typography.bodySmall, color = Palette.Mint, textAlign = textAlign, modifier = Modifier.padding(top = 4.dp))
+                }
+                Text(
+                    if (m.status == Status.NEEDS_REVIEW) "Automatic speech paused. Compare both texts before playing. This check can miss meaning errors."
+                    else "This detail check can miss meaning errors. Compare the source and translation.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.TextMuted,
                     textAlign = textAlign,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -439,6 +612,20 @@ private fun TranscriptLine(m: Message, myLanguage: String, onInstallVoice: () ->
             }
             AnimatedVisibility(visible = m.status == Status.FAILED && m.error != null, enter = DetailEnter, exit = DetailExit) {
                 Text(m.error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = Palette.Mint, modifier = Modifier.padding(top = 4.dp), textAlign = textAlign)
+            }
+            if (retryEligible || replayEligible || canSave) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (retryEligible) TextButton(onClick = { onRetry(m.id) }, enabled = canAct, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                        Text("Retry", style = MaterialTheme.typography.labelLarge)
+                    }
+                    if (replayEligible) TextButton(onClick = { onReplay(m.id, explicitPlayback) }, enabled = canAct, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                        Text(if (explicitPlayback) "Play anyway" else "Replay", style = MaterialTheme.typography.labelLarge)
+                    }
+                    if (canSave) TextButton(
+                        onClick = { onSave(PhraseEditorSeed(iso, outputIso, m.text, translatedText.orEmpty())) },
+                        contentPadding = PaddingValues(horizontal = 6.dp),
+                    ) { Text("Save phrase", style = MaterialTheme.typography.labelLarge) }
+                }
             }
             AnimatedVisibility(visible = expanded, enter = DetailEnter, exit = DetailExit) {
                 Column(Modifier.padding(top = 4.dp), horizontalAlignment = align, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -469,9 +656,10 @@ private fun statusWord(m: Message): String = when (m.status) {
     Status.PLAYED -> if (m.direction == Direction.LOCAL) "played back" else "played"
     Status.NO_VOICE -> "text only"
     Status.TRANSLATION_FAILED -> "translation unavailable"
+    Status.NEEDS_REVIEW -> "review before speech"
 }
 
-/** The latest numbers: bytes, RTT and end-to-end over a link; the stage timings in Solo. */
+/** The latest numbers: bytes, RTT and a delivery/readiness estimate; the stage timings in Solo. */
 @Composable
 private fun NumbersRow(ui: MainViewModel.UiState) {
     val messages = ui.session.messages
@@ -493,7 +681,7 @@ private fun numberItems(ui: MainViewModel.UiState): List<String> = when {
         listOfNotNull(
             last?.wireBytes?.let { "$it B sent" },
             "RTT " + (ui.session.rttMs?.let { "$it ms" } ?: "–"),
-            ui.session.messages.lastOrNull { it.endToEndMs != null }?.endToEndMs?.let { "end-to-end %.2f s".format(it / 1000.0) },
+            ui.session.messages.lastOrNull { it.endToEndMs != null }?.endToEndMs?.let { "delivery est. %.2f s".format(it / 1000.0) },
         )
     }
     ui.mode == Mode.SOLO -> ui.session.messages.lastOrNull { it.direction == Direction.LOCAL && it.ttsMs != null }?.let { m ->
@@ -504,6 +692,8 @@ private fun numberItems(ui: MainViewModel.UiState): List<String> = when {
 
 private fun detailLines(m: Message): List<String> {
     val lines = mutableListOf<String>()
+    if (m.inputOrigin == InputOrigin.TYPED) lines += "Typed source"
+    if (m.translationOrigin == TranslationOrigin.REVIEWED_PHRASE) lines += "Exact user-reviewed translation · no model inference"
     val bytes = m.wireBytes
     val audioBytes = m.recordedSec?.let { (it * SAMPLE_RATE * BYTES_PER_SAMPLE).toLong() }
     when {
@@ -513,8 +703,9 @@ private fun detailLines(m: Message): List<String> {
     when (m.direction) {
         Direction.OUTGOING -> when {
             m.endToEndMs != null -> {
-                lines += "VAD ${m.vadMs} + STT ${m.sttMs} + other ${m.otherMs} + net ${m.networkMs}"
+                lines += "VAD ${m.vadMs ?: "–"} + STT ${m.sttMs ?: "–"} + other ${m.otherMs} + net ${m.networkMs}"
                 lines += "+ peer queue ${m.peerQueueMs} + peer TTS ${m.peerTtsMs} = ${m.endToEndMs} ms"
+                lines += "Delivery/readiness estimate; receipt does not prove audible playback"
             }
             m.ackAfterMs != null -> {
                 lines += "VAD ${m.vadMs ?: "–"} · STT ${m.sttMs ?: "–"} ms"
@@ -527,7 +718,7 @@ private fun detailLines(m: Message): List<String> {
         }
         Direction.LOCAL -> if (m.ttsMs != null) {
             val total = (m.vadMs ?: 0) + (m.sttMs ?: 0) + (m.translationMs ?: 0) + m.ttsMs
-            lines += "VAD ${m.vadMs} · STT ${m.sttMs} · TTS ${m.ttsMs} · total $total ms"
+            lines += "VAD ${m.vadMs ?: "–"} · STT ${m.sttMs ?: "–"} · TTS ${m.ttsMs} · stages $total ms"
         }
     }
     m.translationMs?.let { lines += "Translation $it ms" }

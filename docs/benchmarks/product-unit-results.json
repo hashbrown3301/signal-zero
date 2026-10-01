@@ -1,0 +1,201 @@
+{
+  "scope": "Android-free JVM suite with deterministic capture/session/transport and persistence checks; native tests opt-in",
+  "tests": 235,
+  "passed": 231,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 4,
+  "suites": [
+    {
+      "name": "com.itantra.audio.PcmCaptureTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.audio.WavFileTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.comm.FramedStreamTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.comm.IndicPackTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.comm.LocalAddressesTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.comm.PacketCodecTest",
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.comm.TcpTransportTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.packs.PackDownloaderTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.packs.PackStoreTest",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.session.ChunkedSpeakerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.session.SessionManagerTest",
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.session.SessionRecoveryTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.session.TranslationSessionTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.speech.VoiceCacheTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.translation.CriticalDetailCheckerTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.translation.NllbBenchmarkTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "skipped_tests": [
+        "benchmarkCurrentOfflineRuntime"
+      ]
+    },
+    {
+      "name": "com.itantra.translation.NllbCorpusEvaluationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "skipped_tests": [
+        "evaluateFixedHumanReferences"
+      ]
+    },
+    {
+      "name": "com.itantra.translation.NllbNativeTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2,
+      "skipped_tests": [
+        "actualModelTranslatesAllTenLanguages",
+        "nativeTokenizerMatchesReferenceAcrossAllTenScripts"
+      ]
+    },
+    {
+      "name": "com.itantra.translation.NllbTokensTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.translation.PhrasebookStoreTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.translation.PhrasebookTranslatorTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.translation.RuntimeModelPatchTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    },
+    {
+      "name": "com.itantra.translation.TranslationModelStoreTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_tests": []
+    }
+  ]
+}

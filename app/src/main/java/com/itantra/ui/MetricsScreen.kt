@@ -78,11 +78,11 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
             FadeInSection(0) {
                 Section("Latency", "p50", "p90")
                 PercentileRow("Round trip (RTT)", stats.rtt)
-                PercentileRow("Release → voice ready", stats.heard)
+                PercentileRow("Release → receiver handled", stats.heard)
                 PercentileRow("Speech → text", stats.stt)
                 PercentileRow("Offline translation", stats.translation)
                 PercentileRow("Text → first voice", stats.tts)
-                Note("From this session's messages on this phone. Talk a few times to fill these in.")
+                Note("From this session's messages. Receiver timing is an RTT-based estimate; an ACK does not prove successful translation or audible playback.")
             }
 
             FadeInSection(1) {

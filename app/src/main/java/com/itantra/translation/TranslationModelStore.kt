@@ -232,9 +232,8 @@ class TranslationModelStore(
     }
 
     private fun activate(staging: File) {
-        // An identical, already verified pinned installation needs no replacement or additional storage.
-        val current = installedDir()
-        if (current != null) return
+        // A verified import is an explicit repair: lengths alone cannot detect same-size corruption.
+        // Callers release any loaded runtime before replacing its generation.
         val oldName = readActiveName()
         val pendingPointer = File(root, ".active-${UUID.randomUUID()}")
         try {

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,20 +60,32 @@ enum class TalkButtonState { Idle, Listening, Processing, NoLink }
  * [onPressStart] runs on touch-down and returns whether talking started (false e.g. after asking for the mic
  * permission); only then is [onPressEnd] called when the finger lifts. The disc eases down under the finger at
  * once (before the session reports Listening), and a haptic tick marks both the start and the end of talking.
+ * Cancelled gestures and disposal discard capture through [onPressCancel], without sending it.
  */
 @Composable
 fun HoldToTalkButton(
     state: TalkButtonState,
     onPressStart: () -> Boolean,
     onPressEnd: () -> Unit,
+    onPressCancel: () -> Unit,
     modifier: Modifier = Modifier,
     contentDescription: String = "Hold to talk",
 ) {
     val start by rememberUpdatedState(onPressStart)
     val end by rememberUpdatedState(onPressEnd)
+    val cancel by rememberUpdatedState(onPressCancel)
     val pressable = state == TalkButtonState.Idle || state == TalkButtonState.Listening
     val haptics = LocalHapticFeedback.current
     var held by remember { mutableStateOf(false) }
+    var captureStarted by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose {
+            if (captureStarted) {
+                captureStarted = false
+                cancel()
+            }
+        }
+    }
     val scale by animateFloatAsState(
         if (held || state == TalkButtonState.Listening) 0.94f else 1f, Motion.snappy(), label = "talk-scale",
     )
@@ -91,14 +104,29 @@ fun HoldToTalkButton(
                     held = true
                     try {
                         if (start()) {
+                            captureStarted = true
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            tryAwaitRelease()
+                            val released = tryAwaitRelease()
                             held = false
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            end()
+                            // Clear ownership before callbacks change the session/button state.
+                            if (captureStarted) {
+                                captureStarted = false
+                                if (released) {
+                                    try {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } finally {
+                                        // A device's haptic failure must not leave capture running.
+                                        end()
+                                    }
+                                } else cancel()
+                            }
                         }
                     } finally {
                         held = false
+                        if (captureStarted) {
+                            captureStarted = false
+                            cancel()
+                        }
                     }
                 })
             },

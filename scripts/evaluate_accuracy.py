@@ -24,6 +24,12 @@ LANGUAGES = ("hi", "en", "mr", "gu", "bn", "ta", "te", "kn", "ml", "or")
 def normalize(text: str, ignore_punctuation: bool = True) -> str:
     text = unicodedata.normalize("NFKC", text).casefold()
     if ignore_punctuation:
+        # A dash immediately before a digit can carry a negative value or range.
+        # Canonicalize Unicode numeric dash variants before punctuation removal:
+        # en-dash –5 must never become the same reference as positive 5.
+        numeric_dashes = "\u2010\u2011\u2012\u2013\u2014\u2212"
+        text = "".join("-" if char in numeric_dashes and index + 1 < len(text)
+                       and text[index + 1].isdigit() else char for index, char in enumerate(text))
         chars = []
         for index, char in enumerate(text):
             # Keep decimal/group separators and a numeric sign: 1.5 must not score
@@ -131,7 +137,7 @@ def evaluate(rows: list[dict]) -> dict:
             "required": len(expected), "missing": sorted(expected - present),
         })
     return {
-        "normalization": "Recognition: NFKC/casefold/whitespace; punctuation optional, numeric separators and Indic marks preserved. CER includes spaces. Translation: standard chrF on original strings.",
+        "normalization": "Recognition: NFKC/casefold/whitespace; punctuation optional, numeric dash signs/separators and Indic marks preserved. Strict rates are punctuation-sensitive, not raw exact-string rates. CER includes spaces. Translation: standard chrF on original strings.",
         "coverage": completeness, "results": results,
         "limits": "Reference-based scores only. Review names, numbers, negation and intended meaning with native speakers; include real noisy speech, not just synthesized audio.",
     }

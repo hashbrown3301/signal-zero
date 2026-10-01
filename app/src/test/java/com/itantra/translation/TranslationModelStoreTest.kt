@@ -184,13 +184,27 @@ class TranslationModelStoreTest {
         assertTrue(requests.isEmpty())
     }
 
-    @Test fun repeatedImportsKeepTheExistingVerifiedModel() {
+    @Test fun verifiedReimportActivatesANewGenerationAndRemovesThePreviousOne() {
         val store = store()
         store.importZip(ByteArrayInputStream(zip()))
         val original = store.modelDir
         store.importZip(ByteArrayInputStream(zip()))
-        assertEquals(original, store.modelDir)
+        assertTrue(original != store.modelDir)
+        assertFalse(original!!.exists())
         assertEquals(1, File(tmp.root, "models").listFiles().orEmpty().count { it.isDirectory })
+    }
+
+    @Test fun verifiedReimportRepairsSameLengthCorruptionWithoutHashingOnReadiness() {
+        val store = store()
+        store.importZip(ByteArrayInputStream(zip()))
+        val previous = store.modelDir!!
+        payloads.forEach { (name, bytes) -> File(previous, name).writeBytes(ByteArray(bytes.size)) }
+        // UI refreshes intentionally check metadata/lengths only; explicit verified import repairs bytes.
+        assertTrue(store.ready())
+        store.importZip(ByteArrayInputStream(zip()))
+        assertTrue(store.ready())
+        assertFalse(previous.exists())
+        payloads.forEach { (name, bytes) -> assertArrayEquals(bytes, File(store.modelDir, name).readBytes()) }
     }
 
     @Test fun downloadsAllFilesBeforeActivatingAndReportsCombinedProgress() {

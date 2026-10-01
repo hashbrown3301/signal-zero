@@ -9,4 +9,11 @@ interface Translator {
 }
 
 /** [millis] is the time spent translating; [cached] identifies a reused translation. */
-data class Translated(val text: String, val millis: Long, val cached: Boolean = false)
+data class Translated(
+    val text: String,
+    val millis: Long,
+    val cached: Boolean = false,
+    val origin: TranslationOrigin = TranslationOrigin.MODEL,
+)
+
+enum class TranslationOrigin { MODEL, REVIEWED_PHRASE }

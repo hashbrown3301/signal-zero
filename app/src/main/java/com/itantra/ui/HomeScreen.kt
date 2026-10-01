@@ -632,7 +632,7 @@ private fun LanguageChip(
                                 color = if (lang.iso == myLanguage) Palette.Accent else Palette.OffWhite)
                             Text(
                                 englishName(lang.iso) + when {
-                                    !lang.hasSpeak -> " · install its speak pack first"
+                                    !lang.hasSpeak -> " · type only; install speech for microphone"
                                     !lang.hasListen -> " · no voice"
                                     else -> ""
                                 },
@@ -640,7 +640,7 @@ private fun LanguageChip(
                             )
                         }
                     },
-                    enabled = lang.hasSpeak,
+                    enabled = true,
                     onClick = { open = false; onSelect(lang.iso) },
                 )
             }

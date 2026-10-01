@@ -84,6 +84,7 @@ class TranslationSessionTest {
         clock: () -> Long = { System.nanoTime() / 1_000_000 },
         listener: Listener? = null,
         minPressMs: Long = 0,
+        maxQueuedMessages: Int = 16,
     ): SessionManager = SessionManager(
         scope,
         listener = listener ?: object : Listener {
@@ -99,6 +100,7 @@ class TranslationSessionTest {
         pingIntervalMs = 0,
         translator = translator,
         targetLanguage = target,
+        maxQueuedMessages = maxQueuedMessages,
     ).also { sessions += it; it.start() }
 
     private fun test(block: suspend () -> Unit) = runBlocking { withTimeout(5_000) { block() } }
@@ -315,19 +317,21 @@ class TranslationSessionTest {
     }
 
     @Test
-    fun resendAfterVoiceFailureReusesCompletedTranslation() = test {
+    fun voiceFailureKeepsReceiptAndExplicitRetryDoesNotEnableDuplicatePlayback() = test {
         val transport = FakeTransport()
         val speaker = FakeSpeaker(failFirstPrepare = true)
         val translator = FakeTranslator()
         val session = session(transport, speaker, translator)
         val packet = Packet.text(1, 10, original)
         transport.inbox.send(packet)
-        session.state.first { it.messages.singleOrNull()?.status == Status.FAILED }
-        assertTrue(transport.sent.none { it.type == PacketType.ACK })
+        session.state.first { it.messages.singleOrNull()?.status == Status.FAILED && !it.speaking }
+        assertEquals(0L, transport.ack().ackTtsMs)
+        assertTrue(session.retryMessage(session.state.value.messages.single().id))
+        val message = session.state.first { it.messages.singleOrNull()?.status == Status.PLAYED && !it.speaking }.messages.single()
         transport.inbox.send(packet)
-        val message = session.state.first { it.messages.lastOrNull()?.status == Status.PLAYED }.messages.last()
-        assertEquals(1, translator.calls.size)
-        assertEquals(0L, message.translationMs)
+        transport.ack(count = 2)
+        assertEquals(2, translator.calls.size)
+        assertEquals(37L, message.translationMs)
         assertEquals(translated, message.translatedText)
         assertEquals(listOf(translated), speaker.played)
         transport.ack()
@@ -359,7 +363,7 @@ class TranslationSessionTest {
     }
 
     @Test
-    fun moreThan64PendingMessagesKeepTheirDuplicateIdentities() = test {
+    fun pendingIdentitySurvivesMoreThan64OverflowReceipts() = test {
         val transport = FakeTransport()
         val speaker = FakeSpeaker()
         val started = CompletableDeferred<Unit>()
@@ -368,7 +372,7 @@ class TranslationSessionTest {
             if (text == "first") { started.complete(Unit); release.await() }
             Translated("translated $text", 1)
         }
-        val session = session(transport, speaker, translator)
+        val session = session(transport, speaker, translator, maxQueuedMessages = 1)
         val first = Packet.text(1, 1, "first")
         transport.inbox.send(first)
         started.await()
@@ -377,9 +381,10 @@ class TranslationSessionTest {
         transport.inbox.send(Packet.ping(900, 0))
         while (transport.sent.none { it.type == PacketType.PONG && it.seq == 900 }) delay(5)
         assertEquals(70, session.state.value.messages.size)
+        assertEquals(1, session.state.value.queuedMessages)
         release.complete(Unit)
-        session.state.first { it.messages.size == 70 && it.messages.all { message -> message.status == Status.PLAYED } }
-        assertEquals(70, translator.calls.size)
+        session.state.first { it.messages.count { message -> message.status == Status.PLAYED } == 2 && !it.speaking }
+        assertEquals(2, translator.calls.size)
         assertEquals(1, translator.calls.count { it.first == "first" })
         assertEquals(1, speaker.played.count { it == "translated first" })
     }

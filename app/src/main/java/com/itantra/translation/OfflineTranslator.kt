@@ -48,9 +48,11 @@ class OfflineTranslator(
     /** Native execution cannot be interrupted mid-call; wait for it before releasing sessions. */
     suspend fun release() = withContext(Dispatchers.Default) {
         lock.withLock {
-            runtime?.close()
+            val closing = runtime
             runtime = null
             cache.clear()
+            // A close error must not leave a closed native engine cached for the next request.
+            closing?.close()
         }
     }
 }

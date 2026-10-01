@@ -1,0 +1,12 @@
+{
+  "scope": "All 180 attempted native text translations including the failed generation, on cloud x86 CPU only; no result cache or phone/audio/link measurement",
+  "attempts": 180,
+  "median_ms": 2188.3598985,
+  "mean_ms": 2516.4689719333333,
+  "p95_interpolated_ms": 4421.584353899999,
+  "maximum_ms": 17507.552171,
+  "engine_load_ms": 8584.459398,
+  "model_verification_ms": 2724.129956,
+  "file_cache": "not flushed",
+  "memory": "not newly measured; prior cloud-memory baseline is separate"
+}

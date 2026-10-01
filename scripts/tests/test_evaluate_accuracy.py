@@ -25,6 +25,18 @@ class AccuracyMetricsTest(unittest.TestCase):
     def test_empty_prediction_is_scored_as_deletion(self):
         self.assertEqual(1, recognition_scores([self.row("hello", "")])["cer"])
 
+    def test_unicode_numeric_signs_cannot_disappear_as_punctuation(self):
+        for reference in ("–5", "−5", "—5", "–५", "−௫", "–5.25"):
+            with self.subTest(reference=reference):
+                positive = reference[1:]
+                self.assertGreater(recognition_scores([self.row(reference, positive)])["cer"], 0)
+                self.assertTrue(normalize(reference).startswith("-"))
+        self.assertEqual(normalize("–5"), normalize("-5"))
+        self.assertEqual(normalize("10–20"), normalize("10-20"))
+        self.assertNotEqual(normalize("10–20"), normalize("10 20"))
+        self.assertNotEqual(normalize("–1.5"), normalize("–15"))
+        self.assertEqual("hello world", normalize("hello—world"))
+
     def test_duplicate_ids_are_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "input.jsonl"

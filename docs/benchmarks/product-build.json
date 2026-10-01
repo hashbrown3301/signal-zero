@@ -1,0 +1,24 @@
+{
+  "scope": "Debug assembly only; APKs not executed on Android",
+  "branch": "Upgradation",
+  "apks": [
+    {
+      "name": "app-arm64-v8a-debug.apk",
+      "bytes": 264103244,
+      "sha256": "7fe7a231d9ed2b67b11e2ea2b445ec81431b394f539fc2acf8898ed1bbb65f01"
+    },
+    {
+      "name": "app-armeabi-v7a-debug.apk",
+      "bytes": 252095824,
+      "sha256": "621478e03bdb60c1f0f6abbe9af02a2283c616d5c9de4fb921fcea95a5100bb1"
+    },
+    {
+      "name": "app-x86_64-debug.apk",
+      "bytes": 269147740,
+      "sha256": "54d894e10b5a0dc36d4782b827ad9046842570557741153909bfd6eb9a0491d9"
+    }
+  ],
+  "native_runtime_class_sha256": "6a221c788534a2c6c1e83ece4bd8552a12f097d2cfb603461ce552eaff52ed6e",
+  "matches_evaluated_native_class": true,
+  "python_tests_passed": 46
+}

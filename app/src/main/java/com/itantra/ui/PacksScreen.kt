@@ -180,7 +180,8 @@ fun PacksScreen(
                 item(key = "translation-pack") {
                     TranslationPackCard(
                         translation = translation,
-                        canInstall = !sessionActive && !packs.busy && !downloading,
+                        canInstall = (!sessionActive || translation.canInstallWhileActive) && !packs.busy && !downloading,
+                        sessionActive = sessionActive,
                         onDownload = {
                             val metered = context.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered ?: true
                             if (metered) confirmTranslation.value = true else onDownloadTranslation()
@@ -241,6 +242,7 @@ fun PacksScreen(
 private fun TranslationPackCard(
     translation: MainViewModel.TranslationUi,
     canInstall: Boolean,
+    sessionActive: Boolean,
     onDownload: () -> Unit,
     onImport: () -> Unit,
     onCancel: () -> Unit,
@@ -275,6 +277,12 @@ private fun TranslationPackCard(
                 )
                 Text("Uses about 1.4 GB storage. Requires a 64-bit phone with at least 4 GB RAM; 6 GB is recommended.",
                     style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+            } else {
+                PackAction("Reimport to repair", filled = false, enabled = canInstall && translation.deviceSupported, onClick = onImport)
+                Text("A replacement pack is checked before installation. Your messages stay available.", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+            }
+            if (!translation.busy && sessionActive && !canInstall && translation.deviceSupported) {
+                Text("Wait until this conversation is idle to install the pack. Your messages stay available.", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
             }
             if (!translation.busy && translation.message != null && translation.message != translation.error) {
                 Text(translation.message, style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
@@ -385,13 +393,16 @@ private fun LanguageCard(
                 if (selectedSpeak) {
                     Text("Speaking", color = Palette.Accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
                 } else {
-                    PackAction("Speak this", filled = false, enabled = canSelect && speak.installed != null, onClick = onSelectSpeak)
+                    PackAction("Speak / type this", filled = false, enabled = canSelect, onClick = onSelectSpeak)
                 }
                 if (selectedListen) {
                     Text("Listening", color = Palette.Accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
                 } else {
                     PackAction("Hear this", filled = false, enabled = canSelect, onClick = onSelectListen)
                 }
+            }
+            if (selectedSpeak && speak.installed == null) {
+                Text("Type only · install speech to use the microphone", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
             }
             if (selectedListen && listen.installed == null) {
                 Text("Install its voice for spoken playback. Without a voice, you'll see text.", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)

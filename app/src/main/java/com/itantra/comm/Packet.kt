@@ -12,9 +12,12 @@ enum class PacketType(val code: Int) {
  * Language of a TEXT packet, so the receiver can pick a matching voice. The wire [code]s are fixed forever
  * (docs/PHASE3_PLAN.md); [iso] matches the pack ids (`ta-speak`, `ta-listen`, …).
  */
-enum class Language(val code: Int, val iso: String) {
-    HINDI(1, "hi"), ENGLISH(2, "en"), MARATHI(3, "mr"), GUJARATI(4, "gu"), BENGALI(5, "bn"),
-    TAMIL(6, "ta"), TELUGU(7, "te"), KANNADA(8, "kn"), MALAYALAM(9, "ml"), ODIA(10, "or");
+enum class Language(val code: Int, val iso: String, val englishName: String, val nativeName: String) {
+    HINDI(1, "hi", "Hindi", "हिन्दी"), ENGLISH(2, "en", "English", "English"),
+    MARATHI(3, "mr", "Marathi", "मराठी"), GUJARATI(4, "gu", "Gujarati", "ગુજરાતી"),
+    BENGALI(5, "bn", "Bengali", "বাংলা"), TAMIL(6, "ta", "Tamil", "தமிழ்"),
+    TELUGU(7, "te", "Telugu", "తెలుగు"), KANNADA(8, "kn", "Kannada", "ಕನ್ನಡ"),
+    MALAYALAM(9, "ml", "Malayalam", "മലയാളം"), ODIA(10, "or", "Odia", "ଓଡ଼ିଆ");
 
     companion object {
         fun fromCode(code: Int): Language? = entries.firstOrNull { it.code == code }

@@ -13,18 +13,9 @@ import com.itantra.ui.components.TalkButtonState
  * Plain mappings from the ViewModel's state to what the redesigned screens show. No Android, no Compose.
  */
 
-/** Each language's name in its own script, and in English. */
-private val NATIVE = mapOf(
-    "hi" to "हिन्दी", "en" to "English", "mr" to "मराठी", "gu" to "ગુજરાતી", "bn" to "বাংলা",
-    "ta" to "தமிழ்", "te" to "తెలుగు", "kn" to "ಕನ್ನಡ", "ml" to "മലയാളം", "or" to "ଓଡ଼ିଆ",
-)
-private val ENGLISH = mapOf(
-    "hi" to "Hindi", "en" to "English", "mr" to "Marathi", "gu" to "Gujarati", "bn" to "Bengali",
-    "ta" to "Tamil", "te" to "Telugu", "kn" to "Kannada", "ml" to "Malayalam", "or" to "Odia",
-)
-
-fun nativeName(iso: String?): String = NATIVE[iso] ?: iso.orEmpty()
-fun englishName(iso: String?): String = ENGLISH[iso] ?: iso.orEmpty()
+/** Display labels share the fixed language catalogue used by packets and typed input. */
+fun nativeName(iso: String?): String = iso?.let { Language.fromIso(it)?.nativeName } ?: iso.orEmpty()
+fun englishName(iso: String?): String = iso?.let { Language.fromIso(it)?.englishName } ?: iso.orEmpty()
 fun isoOf(langCode: Int?): String? = langCode?.let { Language.fromCode(it)?.iso }
 
 val MainViewModel.UiState.networked: Boolean get() = mode == Mode.HOST || mode == Mode.JOIN
@@ -48,23 +39,29 @@ fun MainViewModel.UiState.linkTypeLabel(): String = if (link == Link.BLUETOOTH) 
 
 fun MainViewModel.UiState.talkButtonState(): TalkButtonState = when {
     mode == null -> TalkButtonState.NoLink
-    !modelsReady || loadingLanguage != null -> TalkButtonState.Processing
+    session.phase == Phase.Reviewing -> TalkButtonState.NoLink
+    session.phase == Phase.Maintenance -> TalkButtonState.NoLink
+    loadingLanguage != null -> TalkButtonState.Processing
+    !modelsReady -> TalkButtonState.NoLink
     session.phase == Phase.Listening -> TalkButtonState.Listening
-    session.phase == Phase.Processing || session.speaking -> TalkButtonState.Processing
+    session.phase == Phase.Processing || session.speaking || session.translating -> TalkButtonState.Processing
     networked && !connected -> TalkButtonState.NoLink
     else -> TalkButtonState.Idle
 }
 
 /** The two lines under the talk button. */
 fun MainViewModel.UiState.talkLabels(): Pair<String, String> = when {
-    mode == null -> "No link" to "Connect a phone on Home, or start Solo"
-    !modelsReady || loadingLanguage != null -> "Loading…" to "Getting the speech models ready"
-    session.phase == Phase.Listening -> "Listening…" to (if (networked) "Release to send" else "Release to translate")
-    session.phase == Phase.Processing -> "Working…" to (if (networked) "Recognizing speech on this phone" else "Recognizing and translating on this phone")
+    mode == null -> "Hold to talk in Solo" to "Start Solo, or type a phrase below"
+    session.phase == Phase.Reviewing -> "Review your words" to "Confirm or discard the draft before continuing"
+    session.phase == Phase.Maintenance -> "Installing translation pack…" to "Messages are kept. Wait or cancel in Languages."
+    loadingLanguage != null -> "Loading speech…" to "You can still type or use a reviewed phrase"
+    !modelsReady -> "Microphone unavailable" to "Type a phrase, or install speech in Languages"
+    session.phase == Phase.Listening -> "Listening…" to (if (session.reviewBeforeSend) "Release to review" else if (networked) "Release to send" else "Release to translate")
+    session.phase == Phase.Processing -> "Working…" to "Processing your words on this phone"
     session.translating -> "Translating…" to "Processing this phrase offline on your phone"
     session.speaking -> "Speaking…" to "Wait for the voice to finish"
     networked && linkDownSince != null -> "No link" to "Reconnecting to ${peerLabel()}…"
     networked && !connected -> "No link" to "Waiting for the other phone"
-    mode == Mode.SOLO -> "Hold to talk" to "Release to translate into ${englishName(listenLanguage)}"
-    else -> "Hold to talk" to "Release to send"
+    mode == Mode.SOLO -> "Hold to talk" to (if (session.reviewBeforeSend) "Release to review before translating" else "Release to translate into ${englishName(listenLanguage)}")
+    else -> "Hold to talk" to (if (session.reviewBeforeSend) "Release to review before sending" else "Release to send")
 }

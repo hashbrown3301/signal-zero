@@ -1,0 +1,1136 @@
+{
+  "schema_version": 1,
+  "metric": "sacreBLEU chrF++ (word_order=2)",
+  "corpus_sha256": "3db0cf82b7bb858cf09088b2c5bc96c43c4d2e3427fef7575231f52c55eb300e",
+  "cases_sha256": "81cb593d02b3f8b7fdb9f42dcd3d8860f3d2b2884c8ed1a478fa877bf28a4174",
+  "configuration_sha256": "8aa91dcfa726e4cbd1045e88345c4b9fc22c6fd12249e71cde842b71497bf728",
+  "configuration": {
+    "model_id": "nllb-200-distilled-600m-int8-v1",
+    "model_revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "model_files": [
+      {
+        "name": "encoder_model_quantized.onnx",
+        "sha256": "5cde664eacba07a62f198857ec6c06e09572b1ebb77c8137f1fa99ac604a3a28",
+        "bytes": 419120483
+      },
+      {
+        "name": "decoder_model_merged_quantized.onnx",
+        "sha256": "dd66608c2a4194e78f95548fa0e64f24302303698c5b09fa8e1f9e16ec00676b",
+        "bytes": 475505771
+      },
+      {
+        "name": "sentencepiece.bpe.model",
+        "sha256": "14bb8dfb35c0ffdea7bc01e56cea38b9e3d5efcdcb9c251d6b40538e1aab555a",
+        "bytes": 4852054
+      }
+    ],
+    "derived_decoder_sha256": "cb63d93b85e2bc45c0e5816a3177dfab9a7ef7361e77696773fd0191898b2da3",
+    "onnx_runtime": "1.27.0",
+    "custom_ops_sha256": "46219c796f53cea69dcc5559e078f36724f6317595503947886b8c4e833af482",
+    "app_commit": "ec96e026dc692a108f84ed6d54e6480f8f735eb8",
+    "working_tree_dirty": true,
+    "source_tree_sha256": "aa39deb74b994e3690aa732698a548cf2c6ef4a7cf3cff10c2dec4acf5258e69",
+    "runtime_class_sha256": "6a221c788534a2c6c1e83ece4bd8552a12f097d2cfb603461ce552eaff52ed6e",
+    "evaluation_harness_sha256": "de295d6d663e4c0ad8ab733c90822000a9e223ef25f8ee9f82d131b01478cd2c",
+    "intra_op_threads": 2,
+    "inter_op_threads": 1,
+    "execution": "CPU sequential",
+    "optimization": "BASIC_OPT",
+    "cpu_arena": false,
+    "memory_pattern": false,
+    "prepacking": false,
+    "translation_result_cache": false,
+    "generation": "cached greedy",
+    "source_token_limit": 256,
+    "generated_token_limit": 256,
+    "per_case_cooperative_timeout_ms": 60000,
+    "environment": {
+      "os": "Linux",
+      "architecture": "amd64",
+      "java_version": "17.0.20.1",
+      "available_processors": 2,
+      "cgroup_cpu_max": "200000 100000",
+      "cgroup_memory_max": "8589934592"
+    }
+  },
+  "provenance": {
+    "url": "https://dl.fbaipublicfiles.com/nllb/flores200_dataset.tar.gz",
+    "archive_bytes": 25585843,
+    "archive_sha256": "b8b0b76783024b85797e5cc75064eb83fc5288b41e9654dabc7be6ae944011f6",
+    "publisher": "FLORES-200, Meta AI / NLLB Team",
+    "license": "CC-BY-SA-4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "files": [
+      {
+        "path": "flores200_dataset/devtest/ben_Beng.devtest",
+        "bytes": 345694,
+        "sha256": "6699aa77b4c93d520971868cd5ff06a1e3b5ddfde852da13337f5194bc23086f"
+      },
+      {
+        "path": "flores200_dataset/devtest/eng_Latn.devtest",
+        "bytes": 133108,
+        "sha256": "612e9fbe87997617c0fa8fa8929654a4f49b728d96738112c2b86ef6a1d78d88"
+      },
+      {
+        "path": "flores200_dataset/devtest/guj_Gujr.devtest",
+        "bytes": 332080,
+        "sha256": "ad44e4626fc491639e6739e5fba0ea8de5688f4fc40588ccb308d728c29e9f49"
+      },
+      {
+        "path": "flores200_dataset/devtest/hin_Deva.devtest",
+        "bytes": 338106,
+        "sha256": "5f5fd39acadca29fb044a0398e81869e48f37de979df086f2fad4a7d1fd2d015"
+      },
+      {
+        "path": "flores200_dataset/devtest/kan_Knda.devtest",
+        "bytes": 376492,
+        "sha256": "58e8ed5ef79cfd9994e7d4010d22b5ce72c3559f0c8e988fbde11fa58a720cd8"
+      },
+      {
+        "path": "flores200_dataset/devtest/mal_Mlym.devtest",
+        "bytes": 412765,
+        "sha256": "fe08cf95fc451a0c462224539a7070695b7bf0b36d586679d33ae871e7b7dfb6"
+      },
+      {
+        "path": "flores200_dataset/devtest/mar_Deva.devtest",
+        "bytes": 356724,
+        "sha256": "63d0d1bfdcfa7f8a1538c87cab65b0e5e010515529ed286b1f8b2a51cc62b99f"
+      },
+      {
+        "path": "flores200_dataset/devtest/ory_Orya.devtest",
+        "bytes": 362471,
+        "sha256": "884a1527a1f24bc324d1735b9af485cb23a23c43ccd818158457fabeafd6478f"
+      },
+      {
+        "path": "flores200_dataset/devtest/tam_Taml.devtest",
+        "bytes": 422653,
+        "sha256": "a18b26bf278e458f085c70173d6789d6108cb2e3346c81a1bd0f8aceb4ea30e4"
+      },
+      {
+        "path": "flores200_dataset/devtest/tel_Telu.devtest",
+        "bytes": 354723,
+        "sha256": "2dc641b4fb69347efe4b0c0f2063372c643f20c664b41a1f4421b69ba2a06420"
+      },
+      {
+        "path": "flores200_dataset/metadata_devtest.tsv",
+        "bytes": 105761,
+        "sha256": "8edac47f861fcf6b54dad2068c10ba8f741da8b8676861c6bc27fcd9f5483b36"
+      }
+    ]
+  },
+  "selection": "Pair-specific SHA-256 order of seed|source|target|one-based sentence ID; before inference; no replacements",
+  "expected_cases": 180,
+  "completed_cases": 180,
+  "ordered_pairs": 90,
+  "distinct_sentence_ids": 164,
+  "outcomes": {
+    "success": 179,
+    "generation_limit": 1
+  },
+  "failure_rate": 0.005555555555555536,
+  "combined": {
+    "chrf_plus_plus": 44.473317084844474,
+    "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+  },
+  "pairs": [
+    {
+      "source": "bn",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 48.43976656834894,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 45.78745636800653,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 57.07788432448429,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 38.89783900918013,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 44.85471875030012,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 42.30478296940673,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 50.598643803733786,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 43.811147737879686,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "bn",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 25.691980493919708,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 33.53348326584189,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 58.12239734999752,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 59.50425969422737,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 39.436096236108256,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 47.24297012423964,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 38.81985231972924,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 38.26128323710966,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 46.52392089463103,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "en",
+      "target": "te",
+      "examples": 2,
+      "successes": 1,
+      "outcomes": {
+        "success": 1,
+        "generation_limit": 1
+      },
+      "chrf_plus_plus": 11.482048227035147,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 54.136499024029106,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 78.69336297599212,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 46.17388024316452,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 41.24343601195099,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 39.72879817183699,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 37.91142352476158,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 30.047974128592465,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 63.10798233820519,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "gu",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 34.111417957329486,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 39.11761544854503,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 69.07503291553513,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 52.43236496712367,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 34.992743878124735,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 40.5181319981895,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 49.64942252332837,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 41.12554271421441,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 38.99247382862575,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "hi",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 40.81161972247255,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 32.9655513021064,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 61.60778166279729,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 43.79491961851191,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 40.100118726704046,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 28.763569160230666,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 25.998987934685942,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 31.92768378179335,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 58.564108072721034,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "kn",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 50.09756184598808,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 47.683619961310264,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 51.69858224020529,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 37.57748105966149,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 60.38827938938673,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 50.72581226920874,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 51.46649978592725,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 34.29655054887971,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 50.287868140047905,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ml",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 44.618756052499855,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 45.14231786068604,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 58.17913108303978,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 39.088666980967616,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 53.20942881776569,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 41.79733535910473,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 26.999375556698528,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 38.585618158224115,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 29.088980844059858,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "mr",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 48.85078204264314,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 56.61583119223786,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 60.044908471738054,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 36.58382374087858,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 57.312133989343884,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 59.265404612639635,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 38.24050942999901,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 26.518621596805875,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 41.91555788111335,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "or",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 55.7200835202217,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 41.86302656071925,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 51.26716131480694,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 39.60288100487686,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 36.05069957548723,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 37.54586247654802,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 35.66558129142168,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 39.34095264011738,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 53.45066696819484,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "ta",
+      "target": "te",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 40.84651124400502,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "bn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 32.529149417949206,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "en",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 68.01586233920955,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "gu",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 41.93071098856481,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "hi",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 36.1461958613517,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "kn",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 61.05289258834651,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "ml",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 48.5040727666211,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "mr",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 40.737992784655916,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "or",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 29.251147254100392,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    },
+    {
+      "source": "te",
+      "target": "ta",
+      "examples": 2,
+      "successes": 2,
+      "outcomes": {
+        "success": 2
+      },
+      "chrf_plus_plus": 44.052550444410876,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1"
+    }
+  ],
+  "limits": [
+    "chrF++ is reference similarity, not percent accuracy or human adequacy/fluency.",
+    "Only 2 examples per direction: per-pair scores are unstable and no useful tail/quality confidence claim is supported.",
+    "Combined score mixes different languages and topics; review per-pair raw outputs and critical details separately.",
+    "Every selected failure remains an empty prediction in scores; no hard examples are silently replaced.",
+    "FLORES article text is not representative conversational speech; held out from this upgrade, with upstream contamination unknown.",
+    "Cloud translation only; no phone, microphone, synthesis, playback, Firebase or human review is measured."
+  ]
+}

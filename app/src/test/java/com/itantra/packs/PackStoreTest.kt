@@ -10,6 +10,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -157,5 +158,102 @@ class PackStoreTest {
         val m = PackManifest.parse(real)
         assertEquals(listOf("espeak-ng-data"), m.engine.needs)
         assertEquals(9, m.packetCode)
+    }
+
+    @Test
+    fun deletedAndTruncatedAssetsNoLongerCountAsReadyPacks() {
+        val store = store()
+        store.install(ByteArrayInputStream(goodZip()))
+        store.dir("ta-listen").resolve("model.onnx").writeBytes(model.copyOf(10))
+        assertNull(store.get("ta-listen"))
+        assertTrue(store.list().isEmpty())
+        store.install(ByteArrayInputStream(goodZip()))
+        store.dir("ta-listen").resolve("tokens.txt").delete()
+        assertNull(store.get("ta-listen"))
+        assertTrue(store.list().isEmpty())
+    }
+
+    @Test
+    fun manifestTraversalIsRejectedAndKeepsThePreviousPack() {
+        val store = store()
+        store.install(ByteArrayInputStream(goodZip()))
+        val unsafe = manifest(files = mapOf("../outside.bin" to model, "tokens.txt" to tokens))
+            .replace("\"model\": \"model.onnx\"", "\"model\": \"../outside.bin\"")
+        val archive = zip(mapOf("ta-listen/pack.json" to unsafe.encodeToByteArray(),
+            "ta-listen/tokens.txt" to tokens, "outside.bin" to model))
+        assertThrows(PackException::class.java) { store.install(ByteArrayInputStream(archive)) }
+        assertEquals(model.toList(), store.dir("ta-listen").resolve("model.onnx").readBytes().toList())
+        assertEquals(listOf("ta-listen"), store.list().map { it.id })
+    }
+
+    @Test
+    fun unsafeManifestPathsAreRejectedEvenWhenZipEntriesStayInsideTheirFolder() {
+        val store = store()
+        listOf("../model.onnx", "/model.onnx", "nested/../model.onnx", "model//model.onnx", "..\\model.onnx").forEach { path ->
+            val unsafe = manifest(files = mapOf(path to model, "tokens.txt" to tokens))
+                .replace("\"model\": \"model.onnx\"", "\"model\": \"$path\"")
+            val archive = zip(mapOf("ta-listen/pack.json" to unsafe.encodeToByteArray(),
+                "ta-listen/model.onnx" to model, "ta-listen/tokens.txt" to tokens))
+            assertThrows(PackException::class.java) { store.install(ByteArrayInputStream(archive)) }
+            assertTrue(store.list().isEmpty())
+        }
+    }
+
+    @Test
+    fun nestedLegitimateAssetsRemainSupported() {
+        val store = store()
+        val text = manifest(files = mapOf("models/model.onnx" to model, "tokens.txt" to tokens))
+            .replace("\"model\": \"model.onnx\"", "\"model\": \"models/model.onnx\"")
+        store.install(ByteArrayInputStream(zip(mapOf("ta-listen/pack.json" to text.encodeToByteArray(),
+            "ta-listen/models/model.onnx" to model, "ta-listen/tokens.txt" to tokens))))
+        assertTrue(store.get("ta-listen") != null)
+        assertEquals(model.size.toLong(), store.dir("ta-listen").resolve("models/model.onnx").length())
+    }
+
+    @Test
+    fun duplicateDeclaredAssetsAndUnsafeEngineReferencesAreRejected() {
+        val store = store()
+        val duplicate = manifest().replace("\"files\": [",
+            "\"files\": [{\"path\":\"model.onnx\",\"size\":${model.size},\"sha256\":\"${sha(model)}\"},")
+        val unsafeEngine = manifest().replace("\"tokens\": \"tokens.txt\"", "\"tokens\": \"../tokens.txt\"")
+        listOf(duplicate, unsafeEngine).forEach { text ->
+            assertThrows(PackException::class.java) {
+                store.install(ByteArrayInputStream(zip(mapOf("ta-listen/pack.json" to text.encodeToByteArray(),
+                    "ta-listen/model.onnx" to model, "ta-listen/tokens.txt" to tokens))))
+            }
+        }
+        assertTrue(store.list().isEmpty())
+    }
+
+    @Test
+    fun installedSymlinkCannotMakeExternalFilesLookReady() {
+        val store = store()
+        store.install(ByteArrayInputStream(goodZip()))
+        val external = tmp.newFile("outside.onnx").apply { writeBytes(model) }
+        val installed = store.dir("ta-listen").resolve("model.onnx")
+        installed.delete()
+        Files.createSymbolicLink(installed.toPath(), external.toPath())
+        assertNull(store.get("ta-listen"))
+        assertTrue(store.list().isEmpty())
+        assertTrue(external.isFile)
+    }
+
+    @Test
+    fun readinessDoesNotRehashModelBytesAndOversizedManifestIsRejected() {
+        val store = store()
+        store.install(ByteArrayInputStream(goodZip()))
+        store.dir("ta-listen").resolve("model.onnx").writeBytes(ByteArray(model.size))
+        assertTrue(store.get("ta-listen") != null)
+        store.dir("ta-listen").resolve("pack.json").writeBytes(ByteArray(1024 * 1024 + 1))
+        assertNull(store.get("ta-listen"))
+    }
+
+    @Test
+    fun invalidIdCannotResolveOrDeleteOutsideTheStore() {
+        val store = store()
+        val outside = tmp.newFolder("outside")
+        assertThrows(PackException::class.java) { store.dir("../outside") }
+        assertThrows(PackException::class.java) { store.delete("../outside") }
+        assertTrue(outside.isDirectory)
     }
 }
