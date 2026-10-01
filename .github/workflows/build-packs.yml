@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       packs:
-        description: "Packs to build: space-separated <lang>:<speak|listen>, e.g. 'ta:listen ml:listen ta:speak'"
+        description: "Packs to build: space-separated <lang>:<speak|listen>; release-assets uploads the verified APK preview"
         required: true
         default: "ta:listen ml:listen ta:speak"
       release:
@@ -20,6 +20,7 @@ permissions:
 
 jobs:
   build:
+    if: inputs.packs != 'release-assets'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -120,3 +121,18 @@ jobs:
         run: |
           echo "::error title=Packs that failed::$FAILED_PACKS"
           exit 1
+
+  upload-release-assets:
+    if: inputs.packs == 'release-assets' && github.ref == 'refs/heads/Upgradation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify and upload existing signed assets to the draft
+        run: python scripts/upload_release_assets.py

@@ -1,0 +1,18 @@
+{
+  "repository": "hashbrown3301/signal-zero",
+  "release_tag": "apk-v0.2.0",
+  "source_commit": "d1b3f864cde9ed03cc6772164e468edd4b37b98e",
+  "assets": [
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 268,
+      "sha256": "42e0cd7451e7a6857c51f9239b7ce939e9ba5440979c21ccba620d02c72f6556",
+      "blobs": [
+        {
+          "git_blob_sha": "8d976dbf4c43391fed69cc7f6c6deb8b2dbf58e5",
+          "size": 268
+        }
+      ]
+    }
+  ]
+}
