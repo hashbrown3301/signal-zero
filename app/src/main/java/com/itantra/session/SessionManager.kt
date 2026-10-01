@@ -26,8 +26,11 @@ enum class Direction { OUTGOING, INCOMING, LOCAL }
 enum class Status {
     SENT, ACKED, FAILED, QUEUED, PLAYING, PLAYED,
 
-    /** Received, but this phone has no voice for the message's language: shown as text only. */
+    /** Received, but this phone has no voice for the requested playback language: shown as text only. */
     NO_VOICE,
+
+    /** Original text was received, but offline translation could not produce the requested language. */
+    TRANSLATION_FAILED,
 }
 
 data class Message(
@@ -60,6 +63,12 @@ data class Message(
     val langCode: Int? = null,
     /** OUTGOING: how many times the packet was sent again after a reconnect. */
     val resends: Int = 0,
+    /** Translation for INCOMING / LOCAL messages; [text] always retains the original transcription. */
+    val translatedText: String? = null,
+    /** Language actually requested for playback, which may differ from [langCode]. */
+    val outputLangCode: Int? = null,
+    val translationMs: Long? = null,
+    val translationError: String? = null,
 ) {
     /** One-way network estimate: RTT / 2. */
     val networkMs: Long? get() = rttMs?.let { it / 2 }
@@ -90,6 +99,8 @@ data class SessionState(
     val notice: String? = null,
     /** Median of the recent PING/PONG round trips; null until the first PONG. */
     val rttMs: Long? = null,
+    /** True only while offline model translation runs; same-language and cached playback bypass it. */
+    val translating: Boolean = false,
 ) {
     val canTalk: Boolean get() = (phase == Phase.Ready && !speaking) || phase == Phase.Listening
 }
@@ -120,6 +131,10 @@ class SessionManager(
     private val resendWindowMs: Long = 30_000,
     /** A healthy socket is not proof that the peer processed a message. */
     private val ackTimeoutMs: Long = 60_000,
+    /** null preserves the original same-language playback path. */
+    private val translator: Translator? = null,
+    /** Requested listening language for incoming messages and Solo playback; null plays the original. */
+    private val targetLanguage: Language? = null,
 ) {
     init {
         require(pingIntervalMs >= 0 && idlePingIntervalMs > 0 && activeWindowMs >= 0)
@@ -154,9 +169,15 @@ class SessionManager(
     private val playQueue = Channel<Playback>(Channel.UNLIMITED)
     private val pending = ConcurrentHashMap<Int, Pending>()
     private var giveUp: Job? = null // only touched by the link-state collector
-    /** Last received TEXTs, oldest first, each with the ACK sent for it (null until sent). Guarded by itself. */
-    private val seen = object : LinkedHashMap<TextKey, Packet?>() {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<TextKey, Packet?>) = size > SEEN_TEXTS
+    /**
+     * Received TEXT identities, oldest first, with their saved ACK (null while queued/in flight).
+     * Keep every in-flight identity so a slow model cannot turn a resend into a duplicate playback.
+     * Only completed ACK history is bounded to [SEEN_TEXTS]. Guarded by itself.
+     */
+    private val seen = LinkedHashMap<TextKey, Packet?>()
+    /** A voice failure can trigger a resend; reuse a completed translation instead of running the model again. */
+    private val translations = object : LinkedHashMap<TextKey, Translated>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<TextKey, Translated>) = size > SEEN_TEXTS
     }
     private val nextId = AtomicInteger()
     private var nextSeq = 0
@@ -172,6 +193,9 @@ class SessionManager(
 
     fun start() {
         scope.launch { playbackLoop() }
+        if (transport == null && targetLanguage != null) {
+            scope.launch { preloadVoice(targetLanguage.code) }
+        }
         if (transport != null) {
             scope.launch {
                 transport.state.collect { link ->
@@ -297,8 +321,14 @@ class SessionManager(
         val releasedAt = clock()
         talking.value = false
         if (releasedAt - pressedAt < minPressMs) {
-            listener.cancel()
-            _state.update { it.copy(phase = Phase.Ready, notice = "Hold the button while you speak") }
+            try {
+                listener.cancel()
+                _state.update { it.copy(notice = "Hold the button while you speak") }
+            } catch (e: Exception) {
+                _state.update { it.copy(notice = "Could not stop microphone: ${e.message ?: "capture failed"}") }
+            } finally {
+                _state.update { it.copy(phase = Phase.Ready) }
+            }
             return
         }
         _state.update { it.copy(phase = Phase.Processing) }
@@ -385,12 +415,13 @@ class SessionManager(
             }
             PacketType.PING -> {
                 runCatching { transport?.send(Packet.pong(of = p)) }
-                if (p.langCode != preloadedLang) {
-                    preloadedLang = p.langCode
+                val voiceLang = targetLanguage?.code ?: p.langCode
+                if (voiceLang != preloadedLang) {
+                    preloadedLang = voiceLang
                     scope.launch {
                         // No voice yet (not installed): try again on a later PING, so a voice downloaded mid-session
                         // is loaded before the next message instead of on it.
-                        if (!runCatching { speaker.preload(p.langCode) }.getOrDefault(false)) preloadedLang = -1
+                        if (!preloadVoice(voiceLang)) preloadedLang = -1
                     }
                 }
             }
@@ -425,14 +456,19 @@ class SessionManager(
                 _state.update { it.copy(speaking = false) }
             }
             try {
-                val queueMs = (item as? Playback.Remote)?.let { clock() - it.arrivedAt }
-                val prepared = speaker.prepare(item.text, item.langCode)
-                if (item is Playback.Remote) {
-                    // Delivered either way; with no voice the text is shown and the ACK reports 0 ms TTS.
-                    val ack = Packet.ack(of = item.packet, ttsMs = prepared?.synthMs ?: 0, queueMs = queueMs ?: 0)
-                    synchronized(seen) { seen.replace(TextKey(item.packet.seq, item.packet.timestamp), ack) }
-                    runCatching { transport?.send(ack) }
+                val outputLangCode = targetLanguage?.code ?: item.langCode
+                updateMessage(item.messageId) { it.copy(outputLangCode = outputLangCode) }
+                val outputText = textForPlayback(item)
+                // Keep the existing ACK format: translation is part of the time before TTS begins.
+                val queueMs = (item as? Playback.Remote)?.let { (clock() - it.arrivedAt).coerceAtLeast(0) }
+                if (outputText == null) {
+                    acknowledge(item, ttsMs = 0, queueMs = queueMs ?: 0)
+                    updateMessage(item.messageId) { it.copy(queueMs = queueMs) }
+                    continue
                 }
+                val prepared = speaker.prepare(outputText, outputLangCode)
+                // Delivered either way; with no voice the translated text is shown and TTS is 0 ms.
+                acknowledge(item, ttsMs = prepared?.synthMs ?: 0, queueMs = queueMs ?: 0)
                 if (prepared == null) {
                     updateMessage(item.messageId) { it.copy(status = Status.NO_VOICE, queueMs = queueMs) }
                     continue
@@ -458,6 +494,79 @@ class SessionManager(
         }
     }
 
+    /** A translation failure is a delivered text message, never a fallback to the wrong voice. */
+    private suspend fun textForPlayback(item: Playback): String? {
+        val target = targetLanguage ?: return item.text
+        val startedAt = clock()
+        try {
+            val source = Language.fromCode(item.langCode)
+                ?: throw IllegalArgumentException("Unknown source language; offline translation cannot continue.")
+            if (source == target) {
+                updateMessage(item.messageId) { it.copy(translationMs = 0) }
+                return item.text
+            }
+            val key = (item as? Playback.Remote)?.let { TextKey(it.packet.seq, it.packet.timestamp) }
+            val previous = key?.let { translations[it] }
+            val result = if (previous != null) previous.copy(millis = 0, cached = true) else {
+                val engine = translator ?: throw IllegalStateException("Offline translation is not available on this phone.")
+                _state.update { it.copy(translating = true) }
+                try {
+                    engine.translate(item.text, source, target)
+                } finally {
+                    _state.update { it.copy(translating = false) }
+                }
+            }
+            if (result.text.isBlank()) throw IllegalStateException("Offline translation returned no text. Please try again.")
+            if (key != null) translations[key] = result
+            updateMessage(item.messageId) {
+                it.copy(translatedText = result.text, translationMs = result.millis.coerceAtLeast(0))
+            }
+            return result.text
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            updateMessage(item.messageId) {
+                it.copy(
+                    status = Status.TRANSLATION_FAILED,
+                    translationMs = (clock() - startedAt).coerceAtLeast(0),
+                    translationError = e.message ?: "Offline translation failed. Please try again.",
+                )
+            }
+            return null
+        }
+    }
+
+    private suspend fun acknowledge(item: Playback, ttsMs: Long, queueMs: Long) {
+        if (item !is Playback.Remote) return
+        val ack = Packet.ack(of = item.packet, ttsMs = ttsMs, queueMs = queueMs)
+        synchronized(seen) {
+            seen[TextKey(item.packet.seq, item.packet.timestamp)] = ack
+            var completed = seen.values.count { it != null }
+            val entries = seen.entries.iterator()
+            while (completed > SEEN_TEXTS && entries.hasNext()) {
+                if (entries.next().value != null) {
+                    entries.remove()
+                    completed--
+                }
+            }
+        }
+        try {
+            transport?.send(ack)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // A duplicate after reconnect will send this saved ACK without repeating translation or audio.
+        }
+    }
+
+    private suspend fun preloadVoice(langCode: Int): Boolean = try {
+        speaker.preload(langCode)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        false
+    }
+
     private fun addMessage(m: Message) =
         _state.update { it.copy(messages = (it.messages + m).takeLast(MAX_MESSAGES)) }
 
@@ -465,10 +574,20 @@ class SessionManager(
         _state.update { s -> s.copy(messages = s.messages.map { if (it.id == id) change(it) else it }) }
 
     fun close() {
-        listener.cancel()
-        transport?.close()
-        playQueue.close()
-        job.cancel()
+        try {
+            listener.cancel()
+        } catch (e: Exception) {
+            _state.update { it.copy(notice = "Could not stop microphone: ${e.message ?: "capture failed"}") }
+        } finally {
+            try {
+                transport?.close()
+            } catch (e: Exception) {
+                _state.update { it.copy(notice = "Could not close connection: ${e.message ?: "link failed"}") }
+            } finally {
+                playQueue.close()
+                job.cancel()
+            }
+        }
     }
 
     private companion object {

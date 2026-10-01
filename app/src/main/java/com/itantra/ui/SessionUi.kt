@@ -59,11 +59,12 @@ fun MainViewModel.UiState.talkButtonState(): TalkButtonState = when {
 fun MainViewModel.UiState.talkLabels(): Pair<String, String> = when {
     mode == null -> "No link" to "Connect a phone on Home, or start Solo"
     !modelsReady || loadingLanguage != null -> "Loading…" to "Getting the speech models ready"
-    session.phase == Phase.Listening -> "Listening…" to (if (networked) "Release to send" else "Release to hear it back")
-    session.phase == Phase.Processing -> (if (networked) "Sending…" else "Working…") to "Recognizing speech on this phone"
+    session.phase == Phase.Listening -> "Listening…" to (if (networked) "Release to send" else "Release to translate")
+    session.phase == Phase.Processing -> "Working…" to (if (networked) "Recognizing speech on this phone" else "Recognizing and translating on this phone")
+    session.translating -> "Translating…" to "Processing this phrase offline on your phone"
     session.speaking -> "Speaking…" to "Wait for the voice to finish"
     networked && linkDownSince != null -> "No link" to "Reconnecting to ${peerLabel()}…"
     networked && !connected -> "No link" to "Waiting for the other phone"
-    mode == Mode.SOLO -> "Hold to talk" to "Release to hear it back"
+    mode == Mode.SOLO -> "Hold to talk" to "Release to translate into ${englishName(listenLanguage)}"
     else -> "Hold to talk" to "Release to send"
 }

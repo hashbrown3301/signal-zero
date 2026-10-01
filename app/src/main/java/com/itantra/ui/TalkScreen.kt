@@ -118,6 +118,26 @@ fun TalkScreen(
             ui.error != null -> ui.error
             else -> session.notice
         }
+        Text(
+            "Speak ${englishName(ui.myLanguage)} · Hear ${englishName(ui.listenLanguage)} · Offline",
+            style = MaterialTheme.typography.labelLarge,
+            color = Palette.Accent,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        )
+        if (!ui.translation.ready) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Install the translation pack to translate between languages.",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.TextMuted,
+                )
+                TextButton(onClick = onInstallVoice) { Text("Languages") }
+            }
+        }
         val shownNotice = rememberLastNonNull(notice)
         AnimatedVisibility(visible = notice != null, enter = RevealEnter, exit = RevealExit) {
             Text(
@@ -131,6 +151,7 @@ fun TalkScreen(
             messages = session.messages,
             mode = ui.mode,
             myLanguage = ui.myLanguage,
+            listenLanguage = ui.listenLanguage,
             onInstallVoice = onInstallVoice,
             onStartSolo = onStartSolo,
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -174,6 +195,7 @@ private fun Transcript(
     messages: List<Message>,
     mode: Mode?,
     myLanguage: String,
+    listenLanguage: String,
     onInstallVoice: () -> Unit,
     onStartSolo: () -> Unit,
     modifier: Modifier = Modifier,
@@ -208,7 +230,7 @@ private fun Transcript(
         if (messages.isEmpty()) {
             item(key = "empty") {
                 Box(Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = Motion.exit())) {
-                    EmptyHint(mode, myLanguage, onStartSolo)
+                    EmptyHint(mode, myLanguage, listenLanguage, onStartSolo)
                 }
             }
         }
@@ -296,7 +318,7 @@ private fun LinkBannerText(banner: LinkBanner) {
 }
 
 @Composable
-private fun EmptyHint(mode: Mode?, myLanguage: String, onStartSolo: () -> Unit) {
+private fun EmptyHint(mode: Mode?, myLanguage: String, listenLanguage: String, onStartSolo: () -> Unit) {
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     val fade by animateFloatAsState(if (shown) 1f else 0f, Motion.enter(), label = "empty-fade")
@@ -313,6 +335,12 @@ private fun EmptyHint(mode: Mode?, myLanguage: String, onStartSolo: () -> Unit) 
                     Text("Hold the button and speak ", style = MaterialTheme.typography.bodyLarge, color = Palette.TextMuted)
                     Text(nativeName(myLanguage), fontFamily = scriptFont(myLanguage), style = MaterialTheme.typography.bodyLarge, color = Palette.Mint)
                 }
+                Text(
+                    if (mode == Mode.SOLO) "Release to translate into ${englishName(listenLanguage)} on this phone."
+                    else "Release to send. Incoming messages translate into ${englishName(listenLanguage)} on this phone.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Palette.TextMuted,
+                )
             }
         }
     }
@@ -327,6 +355,10 @@ private val MarkerWidth = 2.dp
 private fun TranscriptLine(m: Message, myLanguage: String, onInstallVoice: () -> Unit) {
     val mine = m.direction != Direction.INCOMING
     val iso = isoOf(m.langCode) ?: myLanguage
+    val outputIso = isoOf(m.outputLangCode) ?: iso
+    val translationFailed = m.status == Status.TRANSLATION_FAILED || m.translationError != null
+    val translatedText = m.translatedText?.takeIf { it.isNotBlank() && !translationFailed }
+    val requestedTranslation = m.outputLangCode != null && m.outputLangCode != m.langCode
     var expanded by rememberSaveable(m.id) { mutableStateOf(false) }
     val tapSource = remember { MutableInteractionSource() }
     val markerColor = if (mine) Palette.Teal else Palette.Accent
@@ -355,10 +387,11 @@ private fun TranscriptLine(m: Message, myLanguage: String, onInstallVoice: () ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!mine) Text("← ", style = DataText, color = Palette.TextMuted)
                 Text(
-                    if (m.langCode != null && isoOf(m.langCode) == null) "code ${m.langCode}" else nativeName(iso),
+                    (if (translatedText != null || requestedTranslation || translationFailed) "Original · " else "") +
+                        if (m.langCode != null && isoOf(m.langCode) == null) "code ${m.langCode}" else nativeName(iso),
                     fontFamily = scriptFont(iso), style = MaterialTheme.typography.labelMedium, color = Palette.TextMuted,
                 )
-                LineStatus(" · ${statusWord(m)}" + if (mine) " →" else "", failed = m.status == Status.FAILED)
+                LineStatus(" · ${statusWord(m)}" + if (mine) " →" else "", failed = m.status == Status.FAILED || translationFailed)
             }
             Text(
                 m.text,
@@ -368,13 +401,40 @@ private fun TranscriptLine(m: Message, myLanguage: String, onInstallVoice: () ->
                 textAlign = textAlign,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            AnimatedVisibility(visible = m.status == Status.NO_VOICE, enter = DetailEnter, exit = DetailExit) {
+            if (translatedText != null) {
+                Text(
+                    "Translation · ${nativeName(outputIso)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontFamily = scriptFont(outputIso),
+                    color = Palette.Accent,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Text(
+                    translatedText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = scriptFont(outputIso),
+                    color = Palette.OffWhite,
+                    textAlign = textAlign,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            AnimatedVisibility(visible = m.status == Status.NO_VOICE && !translationFailed, enter = DetailEnter, exit = DetailExit) {
                 val installSource = remember { MutableInteractionSource() }
                 TextButton(
                     onClick = onInstallVoice, contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.padding(top = 4.dp).pressScale(installSource), interactionSource = installSource,
                 ) {
-                    Text("Install ${englishName(iso)} voice →", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = Palette.Accent)
+                    Text("Install ${englishName(outputIso)} voice →", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = Palette.Accent)
+                }
+            }
+            if (translationFailed) {
+                Text(
+                    "Could not translate into ${englishName(outputIso)}. Original text is shown.",
+                    style = MaterialTheme.typography.bodySmall, color = Palette.Mint,
+                    modifier = Modifier.padding(top = 4.dp), textAlign = textAlign,
+                )
+                (m.translationError ?: m.error)?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted, modifier = Modifier.padding(top = 4.dp), textAlign = textAlign)
                 }
             }
             AnimatedVisibility(visible = m.status == Status.FAILED && m.error != null, enter = DetailEnter, exit = DetailExit) {
@@ -408,6 +468,7 @@ private fun statusWord(m: Message): String = when (m.status) {
     Status.PLAYING -> "speaking"
     Status.PLAYED -> if (m.direction == Direction.LOCAL) "played back" else "played"
     Status.NO_VOICE -> "text only"
+    Status.TRANSLATION_FAILED -> "translation unavailable"
 }
 
 /** The latest numbers: bytes, RTT and end-to-end over a link; the stage timings in Solo. */
@@ -436,7 +497,7 @@ private fun numberItems(ui: MainViewModel.UiState): List<String> = when {
         )
     }
     ui.mode == Mode.SOLO -> ui.session.messages.lastOrNull { it.direction == Direction.LOCAL && it.ttsMs != null }?.let { m ->
-        listOf("speech→text ${m.sttMs ?: "–"} ms", "voice ${m.ttsMs} ms", "total %.2f s".format(((m.vadMs ?: 0) + (m.sttMs ?: 0) + (m.ttsMs ?: 0)) / 1000.0))
+        listOf("speech ${m.sttMs ?: "–"} ms", "translate ${m.translationMs ?: "–"} ms", "voice ${m.ttsMs} ms")
     } ?: emptyList()
     else -> emptyList()
 }
@@ -465,10 +526,11 @@ private fun detailLines(m: Message): List<String> {
             lines += "TTS ${m.ttsMs} ms" + (m.queueMs?.takeIf { it >= MIN_SHOWN_WAIT_MS }?.let { " · waited $it ms" } ?: "")
         }
         Direction.LOCAL -> if (m.ttsMs != null) {
-            val total = (m.vadMs ?: 0) + (m.sttMs ?: 0) + m.ttsMs
+            val total = (m.vadMs ?: 0) + (m.sttMs ?: 0) + (m.translationMs ?: 0) + m.ttsMs
             lines += "VAD ${m.vadMs} · STT ${m.sttMs} · TTS ${m.ttsMs} · total $total ms"
         }
     }
+    m.translationMs?.let { lines += "Translation $it ms" }
     if (m.voiceChunks > 1) {
         lines += "First voice chunk ${m.ttsMs ?: "–"} ms · ${m.voiceChunks} chunks"
         m.totalTtsMs?.let { lines += "All voice synthesis $it ms" }

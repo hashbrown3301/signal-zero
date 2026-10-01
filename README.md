@@ -1,6 +1,6 @@
 # iTantra
 
-Offline Hindi voice communication app for Smart India Hackathon **SIH26173 (ISRO)**.
+Offline multilingual hold-to-talk voice translation app for Smart India Hackathon **SIH26173 (ISRO)**.
 Native Kotlin + Jetpack Compose, minSdk 26. Everything runs on the phone, with no internet.
 
 **Phase 0 (done):** hold to talk → Silero VAD → IndicConformer Hindi STT → transcript on screen → Piper Hindi TTS,
@@ -11,9 +11,18 @@ See [BENCHMARKS.md](BENCHMARKS.md).
 
 **Upgradation:** lower first-audio delay through chunked voice synthesis, quieter idle
 links, stronger delivery checks, and direct language selection. The ten-language
-translation roadmap is in [docs/UPGRADATION_PLAN.md](docs/UPGRADATION_PLAN.md);
-translation itself is not integrated yet. Tests and the cloud voice benchmark are
+translation plan is in [docs/UPGRADATION_PLAN.md](docs/UPGRADATION_PLAN.md).
+**Fully offline hold-to-talk translation is integrated:** select **Speak** and **Hear**,
+hold for a phrase, then release to recognize, translate and play the target voice.
+Incoming Wi-Fi/Bluetooth messages are translated on the receiving phone. Original
+and translated text are shown separately. Install the shared translation pack and
+the desired recognition/voice packs first; ZIP import supports entirely offline setup.
+Tests and the cloud voice benchmark are
 documented in [docs/UPGRADATION_VALIDATION.md](docs/UPGRADATION_VALIDATION.md).
+Translation device/quality acceptance is in
+[docs/OFFLINE_TRANSLATION_VALIDATION.md](docs/OFFLINE_TRANSLATION_VALIDATION.md).
+Actual model/runtime cloud checks are in
+[docs/OFFLINE_TRANSLATION_RESULTS.md](docs/OFFLINE_TRANSLATION_RESULTS.md).
 
 ## Models
 
@@ -21,9 +30,12 @@ documented in [docs/UPGRADATION_VALIDATION.md](docs/UPGRADATION_VALIDATION.md).
 |---|---|---|---|
 | VAD | Silero VAD | [sherpa-onnx asr-models release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models) | MIT |
 | STT | AI4Bharat IndicConformer Hindi (int8 ONNX) | [OpenVoiceOS/ai4bharat-indicconformer-hi-onnx](https://huggingface.co/OpenVoiceOS/ai4bharat-indicconformer-hi-onnx) | MIT |
+| Translation | NLLB-200 distilled 600M (int8 ONNX, shared across all 10 languages) | [Xenova/nllb-200-distilled-600M](https://huggingface.co/Xenova/nllb-200-distilled-600M) | CC BY-NC 4.0; upstream intended for research, not production |
 | TTS | Piper `hi_IN-priyamvada-medium` | [sherpa-onnx tts-models release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | dataset CC BY-NC-SA 4.0 (**non-commercial**) |
 
 Runtime: [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.7 (Apache-2.0).
+Translation uses ONNX Runtime Java 1.27.0 with sherpa's shared native runtime 1.27.1,
+and ONNX Runtime Extensions 0.13.0 for exact SentencePiece tokenization.
 
 The STT model ships without the metadata sherpa-onnx needs, so `scripts/fetch_models.py` adds
 `vocab_size`, `subsampling_factor`, `normalize_type` and `model_type` to it.
@@ -37,6 +49,9 @@ Requires the Android SDK, Android Studio's bundled JDK, and Python 3.12. From th
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r scripts\requirements.txt
 .venv\Scripts\python.exe scripts\fetch_models.py
+
+# Optional: prepare the ~900 MB translation pack for importing without internet on the phone
+.venv\Scripts\python.exe scripts\fetch_translation_model.py --zip
 
 # 2. Optional: check the models on the PC (TTS a Hindi sentence, then STT it back)
 .venv\Scripts\python.exe scripts\test_models_pc.py
@@ -57,6 +72,18 @@ adb logcat -s iTantra:* AndroidRuntime:E
 
 - A real phone is recommended. The x86_64 emulator is supported, but it needs roughly 16 GB of PC RAM to run alongside Gradle.
 - The debug APK is about 240 MB per CPU type because the Hindi models are bundled as uncompressed assets.
+- The shared translation pack is 899,478,308 bytes (~858 MiB) and stays outside the APK.
+  On first use the app creates a verified optimized decoder (~475 MB); translation uses ~1.4 GB storage.
+  It supports all 90 directed pairs. The app loads one model lazily and caches repeat translations;
+  it requires a 64-bit phone with at least 4 GB RAM and 2.5 GB free memory to load.
+  Six GB RAM or more is recommended until device trials are complete. Two-GB low-RAM phones
+  keep recognition/same-language playback but cannot load this translation model.
+  Short phrases reduce decoding latency. No lag-free or improved-accuracy claim has been established.
+- In **Languages**, download the translation pack once or use **Import ZIP** with the generated
+  `dist/translation/nllb-200-distilled-600m-int8-v1.zip`. Setup downloads verify pinned SHA-256s.
+  Conversation inference performs no network calls, including when internet is unavailable.
+- ONNX Runtime Extensions' published 0.13.0 ARM64 libraries have 4 KB alignment. A rebuilt
+  16 KB-compatible runtime and physical-device testing are required before a Play release.
 - Other languages are installed as packs from the **Language packs** screen: tap **Download** (needs internet
   once; packs come from the public release https://github.com/hashbrown3301/signal-zero/releases/tag/packs-v1),
   or without internet use **Import pack…** or `adb push <pack>.zip /sdcard/Android/data/com.itantra/files/incoming/`.

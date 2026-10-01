@@ -1,0 +1,581 @@
+{
+  "date": "2026-10-01",
+  "environment": "Cloud CPU, 2-core quota, 8 GiB; Java ORT 1.27.0; Extensions 0.13.0; not Android hardware",
+  "model": "Xenova/nllb-200-distilled-600M",
+  "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+  "derived_decoder_sha256": "cb63d93b85e2bc45c0e5816a3177dfab9a7ef7361e77696773fd0191898b2da3",
+  "configuration": "Greedy cached generation; BASIC optimization; two intra-op threads; CPU arena, memory patterns and prepacking disabled",
+  "license": "CC-BY-NC-4.0; NLLB Team, Meta AI; ONNX conversion by Xenova; output-layer optimization by Signal Zero",
+  "coverage_directions": 90,
+  "test_examples": "One short request for water per source language; see NllbNativeTest.kt for exact input strings. This is coverage, not an accuracy corpus.",
+  "median_translation_ms": 555.5,
+  "min_translation_ms": 288,
+  "max_translation_ms": 737,
+  "cold_load_ms": 5690,
+  "same_output_as_original": 89,
+  "output_differences": [
+    {
+      "source": "ml",
+      "target": "bn",
+      "original": "পানি আনবেন, প্লিজ।",
+      "selected": "পানি আনুন, প্লিজ।"
+    }
+  ],
+  "quantity_negation_smoke": "कृपया 50 नहीं बल्कि 25 बोतलें लाओ। | दरवाजा मत खोलो।",
+  "rows": [
+    {
+      "source": "hi",
+      "target": "en",
+      "millis": 420,
+      "output": "Please bring water."
+    },
+    {
+      "source": "hi",
+      "target": "mr",
+      "millis": 458,
+      "output": "पाणी आणून द्या."
+    },
+    {
+      "source": "hi",
+      "target": "gu",
+      "millis": 560,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "hi",
+      "target": "bn",
+      "millis": 618,
+      "output": "পানি আনুন, প্লিজ।"
+    },
+    {
+      "source": "hi",
+      "target": "ta",
+      "millis": 714,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "hi",
+      "target": "te",
+      "millis": 687,
+      "output": "దయచేసి నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "hi",
+      "target": "kn",
+      "millis": 737,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "hi",
+      "target": "ml",
+      "millis": 693,
+      "output": "ദയവായി വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "hi",
+      "target": "or",
+      "millis": 678,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।"
+    },
+    {
+      "source": "en",
+      "target": "hi",
+      "millis": 536,
+      "output": "कृपया पानी लाओ।"
+    },
+    {
+      "source": "en",
+      "target": "mr",
+      "millis": 564,
+      "output": "कृपया पाणी आणून द्या."
+    },
+    {
+      "source": "en",
+      "target": "gu",
+      "millis": 567,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "en",
+      "target": "bn",
+      "millis": 534,
+      "output": "পানি আনবেন প্লিজ।"
+    },
+    {
+      "source": "en",
+      "target": "ta",
+      "millis": 645,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "en",
+      "target": "te",
+      "millis": 509,
+      "output": "దయచేసి నీరు తీసుకుని."
+    },
+    {
+      "source": "en",
+      "target": "kn",
+      "millis": 703,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "en",
+      "target": "ml",
+      "millis": 497,
+      "output": "വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "en",
+      "target": "or",
+      "millis": 592,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।"
+    },
+    {
+      "source": "mr",
+      "target": "hi",
+      "millis": 494,
+      "output": "कृपया पानी लाओ।"
+    },
+    {
+      "source": "mr",
+      "target": "en",
+      "millis": 433,
+      "output": "Please bring water."
+    },
+    {
+      "source": "mr",
+      "target": "gu",
+      "millis": 643,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "mr",
+      "target": "bn",
+      "millis": 645,
+      "output": "পানি আনুন, প্লিজ।"
+    },
+    {
+      "source": "mr",
+      "target": "ta",
+      "millis": 681,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "mr",
+      "target": "te",
+      "millis": 652,
+      "output": "దయచేసి నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "mr",
+      "target": "kn",
+      "millis": 680,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "mr",
+      "target": "ml",
+      "millis": 506,
+      "output": "വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "mr",
+      "target": "or",
+      "millis": 644,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ।"
+    },
+    {
+      "source": "gu",
+      "target": "hi",
+      "millis": 440,
+      "output": "कृपया पानी लाओ।"
+    },
+    {
+      "source": "gu",
+      "target": "en",
+      "millis": 373,
+      "output": "Please bring water."
+    },
+    {
+      "source": "gu",
+      "target": "mr",
+      "millis": 482,
+      "output": "कृपया पाणी आणून द्या."
+    },
+    {
+      "source": "gu",
+      "target": "bn",
+      "millis": 641,
+      "output": "পানি আনুন, প্লিজ।"
+    },
+    {
+      "source": "gu",
+      "target": "ta",
+      "millis": 704,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "gu",
+      "target": "te",
+      "millis": 615,
+      "output": "దయచేసి నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "gu",
+      "target": "kn",
+      "millis": 708,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "gu",
+      "target": "ml",
+      "millis": 634,
+      "output": "ദയവായി വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "gu",
+      "target": "or",
+      "millis": 609,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ ।"
+    },
+    {
+      "source": "bn",
+      "target": "hi",
+      "millis": 516,
+      "output": "पानी ले आओ, कृपया।"
+    },
+    {
+      "source": "bn",
+      "target": "en",
+      "millis": 439,
+      "output": "Please bring water."
+    },
+    {
+      "source": "bn",
+      "target": "mr",
+      "millis": 455,
+      "output": "पाणी आणून द्या."
+    },
+    {
+      "source": "bn",
+      "target": "gu",
+      "millis": 526,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "bn",
+      "target": "ta",
+      "millis": 609,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "bn",
+      "target": "te",
+      "millis": 554,
+      "output": "దయచేసి నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "bn",
+      "target": "kn",
+      "millis": 680,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "bn",
+      "target": "ml",
+      "millis": 503,
+      "output": "വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "bn",
+      "target": "or",
+      "millis": 684,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ।"
+    },
+    {
+      "source": "ta",
+      "target": "hi",
+      "millis": 413,
+      "output": "पानी लाओ."
+    },
+    {
+      "source": "ta",
+      "target": "en",
+      "millis": 419,
+      "output": "Bring me some water."
+    },
+    {
+      "source": "ta",
+      "target": "mr",
+      "millis": 330,
+      "output": "पाणी आण."
+    },
+    {
+      "source": "ta",
+      "target": "gu",
+      "millis": 374,
+      "output": "પાણી લાવો."
+    },
+    {
+      "source": "ta",
+      "target": "bn",
+      "millis": 372,
+      "output": "পানি আনুন।"
+    },
+    {
+      "source": "ta",
+      "target": "te",
+      "millis": 490,
+      "output": "నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "ta",
+      "target": "kn",
+      "millis": 588,
+      "output": "ನೀರನ್ನು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "ta",
+      "target": "ml",
+      "millis": 504,
+      "output": "വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "ta",
+      "target": "or",
+      "millis": 288,
+      "output": "ପାଣି ଆଣ।"
+    },
+    {
+      "source": "te",
+      "target": "hi",
+      "millis": 484,
+      "output": "कृपया पानी लाओ।"
+    },
+    {
+      "source": "te",
+      "target": "en",
+      "millis": 406,
+      "output": "Please bring water."
+    },
+    {
+      "source": "te",
+      "target": "mr",
+      "millis": 416,
+      "output": "पाणी आणून द्या."
+    },
+    {
+      "source": "te",
+      "target": "gu",
+      "millis": 497,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "te",
+      "target": "bn",
+      "millis": 597,
+      "output": "পানি আনবেন, প্লিজ।"
+    },
+    {
+      "source": "te",
+      "target": "ta",
+      "millis": 737,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "te",
+      "target": "kn",
+      "millis": 729,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "te",
+      "target": "ml",
+      "millis": 543,
+      "output": "വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "te",
+      "target": "or",
+      "millis": 647,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ।"
+    },
+    {
+      "source": "kn",
+      "target": "hi",
+      "millis": 493,
+      "output": "कृपया पानी लाओ।"
+    },
+    {
+      "source": "kn",
+      "target": "en",
+      "millis": 444,
+      "output": "Please bring water."
+    },
+    {
+      "source": "kn",
+      "target": "mr",
+      "millis": 487,
+      "output": "पाणी आणून द्या."
+    },
+    {
+      "source": "kn",
+      "target": "gu",
+      "millis": 552,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "kn",
+      "target": "bn",
+      "millis": 615,
+      "output": "পানি আনবেন, প্লিজ।"
+    },
+    {
+      "source": "kn",
+      "target": "ta",
+      "millis": 668,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "kn",
+      "target": "te",
+      "millis": 651,
+      "output": "దయచేసి నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "kn",
+      "target": "ml",
+      "millis": 533,
+      "output": "വെള്ളം കൊണ്ടുവരിക."
+    },
+    {
+      "source": "kn",
+      "target": "or",
+      "millis": 557,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ।"
+    },
+    {
+      "source": "ml",
+      "target": "hi",
+      "millis": 410,
+      "output": "कृपया पानी लाओ।"
+    },
+    {
+      "source": "ml",
+      "target": "en",
+      "millis": 386,
+      "output": "Please bring water."
+    },
+    {
+      "source": "ml",
+      "target": "mr",
+      "millis": 497,
+      "output": "कृपया पाणी आणून द्या."
+    },
+    {
+      "source": "ml",
+      "target": "gu",
+      "millis": 531,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "ml",
+      "target": "bn",
+      "millis": 585,
+      "output": "পানি আনুন, প্লিজ।"
+    },
+    {
+      "source": "ml",
+      "target": "ta",
+      "millis": 718,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "ml",
+      "target": "te",
+      "millis": 596,
+      "output": "దయచేసి నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "ml",
+      "target": "kn",
+      "millis": 697,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "ml",
+      "target": "or",
+      "millis": 695,
+      "output": "ଦୟାକରି ପାଣି ଆଣନ୍ତୁ।"
+    },
+    {
+      "source": "or",
+      "target": "hi",
+      "millis": 427,
+      "output": "कृपया पानी लाओ।"
+    },
+    {
+      "source": "or",
+      "target": "en",
+      "millis": 423,
+      "output": "Please bring water."
+    },
+    {
+      "source": "or",
+      "target": "mr",
+      "millis": 451,
+      "output": "पाणी आणून द्या."
+    },
+    {
+      "source": "or",
+      "target": "gu",
+      "millis": 568,
+      "output": "કૃપા કરીને પાણી લાવો."
+    },
+    {
+      "source": "or",
+      "target": "bn",
+      "millis": 562,
+      "output": "পানি আনবেন, প্লিজ।"
+    },
+    {
+      "source": "or",
+      "target": "ta",
+      "millis": 641,
+      "output": "தயவு செய்து தண்ணீர் கொண்டு வாருங்கள்."
+    },
+    {
+      "source": "or",
+      "target": "te",
+      "millis": 549,
+      "output": "దయచేసి నీళ్లు తెచ్చుకోండి."
+    },
+    {
+      "source": "or",
+      "target": "kn",
+      "millis": 654,
+      "output": "ದಯವಿಟ್ಟು ನೀರು ತಂದುಕೊಡಿ."
+    },
+    {
+      "source": "or",
+      "target": "ml",
+      "millis": 471,
+      "output": "വെള്ളം കൊണ്ടുവരിക."
+    }
+  ],
+  "limits": "No microphone, target voice, Bluetooth or phone timings in these measurements. No general accuracy score or human review. Rohan to Rohn name error persists in both original and optimized models.",
+  "previous_selected_run": {
+    "median_translation_ms": 594.5,
+    "cold_load_ms": 6138,
+    "min_translation_ms": 334,
+    "max_translation_ms": 773
+  },
+  "jvm_tests": {
+    "tests": 158,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "python_tests": 28
+}

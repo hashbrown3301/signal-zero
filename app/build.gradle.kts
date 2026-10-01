@@ -57,6 +57,9 @@ android {
 dependencies {
     // Downloaded by scripts/fetch_models.py (not committed).
     implementation(files("libs/sherpa-onnx-1.13.7.aar"))
+    // The prepared Java AAR shares sherpa's ORT 1.27.1 native runtime; no pickFirst.
+    implementation(files("libs/onnxruntime-android-1.27.0-shared.aar"))
+    implementation(files("libs/onnxruntime-extensions-android-0.13.0.aar"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
 
@@ -73,4 +76,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    // Provides Linux/macOS/Windows native libraries for JVM inference smoke tests.
+    testImplementation("com.microsoft.onnxruntime:onnxruntime:1.27.0")
 }

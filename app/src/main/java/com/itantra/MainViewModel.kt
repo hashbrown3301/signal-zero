@@ -37,10 +37,16 @@ import com.itantra.session.Status
 import com.itantra.speech.SttEngine
 import com.itantra.speech.TtsEngine
 import com.itantra.speech.VadTrimmer
+import com.itantra.translation.OfflineTranslator
+import com.itantra.translation.TranslationModelSpec
+import com.itantra.translation.TranslationModelStore
+import ai.onnxruntime.extensions.OrtxPackage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -82,6 +88,16 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     /** A pack download in progress (or failed, with [error]). */
     data class DownloadUi(val downloaded: Long = 0, val total: Long = 0, val error: String? = null)
 
+    data class TranslationUi(
+        val ready: Boolean = false,
+        val busy: Boolean = false,
+        val progress: Float? = null,
+        val message: String? = null,
+        val error: String? = null,
+        val modelSizeBytes: Long = TranslationModelSpec.totalBytes,
+        val deviceSupported: Boolean = true,
+    )
+
     data class PacksUi(
         val builtIn: List<PackManifest> = emptyList(),
         val installed: List<PackManifest> = emptyList(),
@@ -121,6 +137,9 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         val lastOutageMs: Long? = null,
         /** The language this phone speaks (ISO code of its speak pack), and which languages are installed. */
         val myLanguage: String = "hi",
+        /** All received and Solo speech is translated into this independently selected language. */
+        val listenLanguage: String = "hi",
+        val translation: TranslationUi = TranslationUi(),
         val languages: List<LanguageOption> = emptyList(),
         /** Language whose models are loading right now (switching languages), or null. */
         val loadingLanguage: String? = null,
@@ -136,12 +155,25 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             lastPeer = prefs.getString(KEY_LAST_PEER, "").orEmpty(),
             lastBtAddress = prefs.getString(KEY_LAST_BT, "").orEmpty(),
             myLanguage = prefs.getString(KEY_MY_LANGUAGE, "hi") ?: "hi",
+            listenLanguage = prefs.getString(KEY_LISTEN_LANGUAGE, "hi") ?: "hi",
         )
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private val factory by lazy { EngineFactory(getApplication()) }
     private val packRepo by lazy { PackRepository(getApplication()) }
+    private val translationStore by lazy {
+        TranslationModelStore(File(app.filesDir, "translation"), File(app.cacheDir, "translation-downloads"))
+    }
+    private val translator by lazy {
+        OfflineTranslator(translationStore, OrtxPackage::getLibraryPath) {
+            val info = ActivityManager.MemoryInfo()
+            app.getSystemService(ActivityManager::class.java)?.getMemoryInfo(info)
+            // Measured native loading peaks near 1.9 GiB; reserve room for speech and Android.
+            android.os.Process.is64Bit() && !lowRam && info.totalMem >= 3_000_000_000L &&
+                !info.lowMemory && info.availMem >= 2_500_000_000L
+        }
+    }
     /** Guards [vad] and [stt]: held while they run and while they're released. Taken before [voiceLock] when both are needed. */
     private val engineLock = Mutex()
     /** Guards [voices]: held while a voice is looked up and synthesizes, and while voices are evicted or released. */
@@ -173,6 +205,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
 
     init {
         viewModelScope.launch {
+            refreshTranslation()
             refreshLanguages()
             val saved = _state.value.myLanguage
             val usable = _state.value.languages.any { it.iso == saved && it.hasSpeak }
@@ -210,6 +243,22 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         viewModelScope.launch { loadLanguage(iso) }
     }
 
+    fun selectListenLanguage(iso: String) {
+        if (_state.value.mode != null || Language.fromIso(iso) == null) return
+        prefs.edit().putString(KEY_LISTEN_LANGUAGE, iso).apply()
+        _state.update { it.copy(listenLanguage = iso) }
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                Language.fromIso(iso)?.let { lang -> voiceLock.withLock { voices.get(lang.code) } }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not preload $iso voice", e)
+                _state.update { it.copy(error = "Could not load the $iso voice: ${e.message}") }
+            }
+        }
+    }
+
     private suspend fun loadLanguage(iso: String) {
         _state.update { it.copy(loadingLanguage = iso, modelsReady = false, error = null) }
         try {
@@ -229,7 +278,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     coroutineScope {
                         // Preload this language's voice so the first Solo reply is quick; it loads alongside the STT
                         // (independent native loads), so switching costs about max(STT, voice) instead of the sum.
-                        val voice = async { Language.fromIso(iso)?.let { voiceLock.withLock { voices.get(it.code) } } }
+                        val voice = async { Language.fromIso(_state.value.listenLanguage)?.let { voiceLock.withLock { voices.get(it.code) } } }
                         val t = SystemClock.elapsedRealtime()
                         stt = factory.stt(speak)
                         Log.i(TAG, "STT ${speak.manifest.id} loaded in ${SystemClock.elapsedRealtime() - t} ms")
@@ -256,12 +305,17 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
      */
     fun startSession(mode: Mode, peer: String = "", link: Link = Link.WIFI, peerName: String = peer) {
         if (_state.value.mode != null) return
+        if (_state.value.translation.busy) {
+            _state.update { it.copy(error = "Finish or cancel the translation pack installation before starting a conversation") }
+            return
+        }
         val peerId = peer.trim()
         val bt = link == Link.BLUETOOTH && mode != Mode.SOLO
         if (mode == Mode.JOIN) prefs.edit().putString(if (bt) KEY_LAST_BT else KEY_LAST_PEER, peerId).apply()
         _state.update {
             it.copy(
                 mode = mode,
+                error = null,
                 link = if (mode == Mode.SOLO) Link.WIFI else link,
                 peer = peerId,
                 peerName = peerName,
@@ -305,6 +359,8 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 transport,
                 language = language,
                 clock = SystemClock::elapsedRealtime,
+                targetLanguage = Language.fromIso(_state.value.listenLanguage) ?: Language.HINDI,
+                translator = translator,
             )
             session = sm
             sm.start()
@@ -442,6 +498,63 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
     fun closePacks() = _state.update { it.copy(showPacks = false) }
 
     private var downloadJob: Job? = null
+    private var translationJob: Job? = null
+
+    private suspend fun refreshTranslation() {
+        val ready = withContext(Dispatchers.IO) { translationStore.ready() }
+        val info = ActivityManager.MemoryInfo()
+        getApplication<Application>().getSystemService(ActivityManager::class.java)?.getMemoryInfo(info)
+        val supported = android.os.Process.is64Bit() && !lowRam && info.totalMem >= 3_000_000_000L
+        _state.update { it.copy(translation = it.translation.copy(ready = ready, deviceSupported = supported,
+            error = if (supported) it.translation.error else "Offline translation requires a 64-bit phone with at least 4 GB RAM")) }
+    }
+
+    fun downloadTranslationModel() = installTranslation(null)
+    fun importTranslationModel(uri: Uri) = installTranslation(uri)
+    fun cancelTranslationDownload() { translationJob?.cancel() }
+
+    private fun installTranslation(uri: Uri?) {
+        if (translationJob?.isActive == true || _state.value.mode != null || !_state.value.translation.deviceSupported) return
+        _state.update {
+            it.copy(translation = it.translation.copy(busy = true, progress = null, error = null,
+                message = if (uri == null) "Downloading offline translation…" else "Verifying translation pack…"))
+        }
+        translationJob = viewModelScope.launch {
+            var message: String? = null
+            var error: String? = null
+            try {
+                val job = coroutineContext[Job]
+                withContext(Dispatchers.IO) {
+                    if (uri == null) {
+                        translationStore.download { done, total ->
+                            _state.update {
+                                it.copy(translation = it.translation.copy(
+                                    progress = if (total > 0) done.toFloat() / total else null))
+                            }
+                            job?.isActive == true
+                        }
+                    } else {
+                        getApplication<Application>().contentResolver.openInputStream(uri)?.use {
+                            translationStore.importZip(it) { job?.isActive == true }
+                        } ?: error("Could not open translation pack")
+                    }
+                }
+                coroutineContext.ensureActive()
+                message = "Offline translation ready for all 10 languages"
+            } catch (e: CancellationException) {
+                message = if (uri == null) "Download cancelled; it can resume" else "Import cancelled"
+            } catch (e: PackDownloader.Cancelled) {
+                message = if (uri == null) "Download cancelled; it can resume" else "Import cancelled"
+            } catch (e: Exception) {
+                Log.w(TAG, "Translation pack installation failed", e)
+                error = e.message ?: "Could not install translation pack"
+            } finally {
+                val ready = withContext(NonCancellable + Dispatchers.IO) { translationStore.ready() }
+                _state.update { it.copy(translation = it.translation.copy(
+                    ready = ready, busy = false, progress = null, message = message, error = error)) }
+            }
+        }
+    }
 
     /** Downloads and installs pack [id]; progress shows on the Language packs screen. One download at a time. */
     fun downloadPack(id: String) {
@@ -554,7 +667,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             }
             Log.i(
                 TAG, "$dir #${m.seq ?: "-"} ${m.status} ${m.wireBytes ?: "-"} B | vad=${m.vadMs} stt=${m.sttMs} " +
-                    "tts=${m.ttsMs} queue=${m.queueMs} ackAfter=${m.ackAfterMs} peerTts=${m.peerTtsMs} " +
+                    "translate=${m.translationMs} output=${m.outputLangCode} tts=${m.ttsMs} queue=${m.queueMs} ackAfter=${m.ackAfterMs} peerTts=${m.peerTtsMs} " +
                     "peerQueue=${m.peerQueueMs} rtt=${m.rttMs} e2e=${m.endToEndMs} other=${m.otherMs} | ${m.text}"
             )
         }
@@ -583,6 +696,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                 stt = null
             }
             voiceLock.withLock { voices.clear() }
+            translator.release()
         }
     }
 
@@ -591,7 +705,8 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
         const val KEY_LAST_PEER = "last_peer"
         const val KEY_LAST_BT = "last_bt_address"
         const val KEY_MY_LANGUAGE = "my_language"
+        const val KEY_LISTEN_LANGUAGE = "listen_language"
         // SENT is logged too, so a message that never gets an ACK (a loss) still leaves a row.
-        val LOGGED_STATUSES = setOf(Status.SENT, Status.ACKED, Status.FAILED, Status.PLAYED)
+        val LOGGED_STATUSES = setOf(Status.SENT, Status.ACKED, Status.FAILED, Status.PLAYED, Status.TRANSLATION_FAILED)
     }
 }

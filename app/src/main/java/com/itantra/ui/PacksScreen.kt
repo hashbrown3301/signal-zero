@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import com.itantra.MainViewModel
+import com.itantra.comm.Language
 import com.itantra.packs.CatalogEntry
 import com.itantra.packs.PackManifest
 import com.itantra.ui.components.SecondaryButton
@@ -70,16 +71,26 @@ fun PacksScreen(
     onCancelDownload: () -> Unit,
     onRefreshCatalog: () -> Unit,
     selectedLanguage: String,
+    listenLanguage: String,
+    translation: MainViewModel.TranslationUi,
     loadingLanguage: String?,
     sessionActive: Boolean,
     onSelectLanguage: (String) -> Unit,
+    onSelectListenLanguage: (String) -> Unit,
+    onDownloadTranslation: () -> Unit,
+    onImportTranslation: (Uri) -> Unit,
+    onCancelTranslationDownload: () -> Unit,
 ) {
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) onImport(uri)
     }
+    val translationPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) onImportTranslation(uri)
+    }
     // Ask before a big download on mobile data; on Wi-Fi just start.
     val confirm = remember { mutableStateOf<Pair<String, CatalogEntry>?>(null) }
+    val confirmTranslation = remember { mutableStateOf(false) }
     confirm.value?.let { (id, entry) ->
         AlertDialog(
             onDismissRequest = { confirm.value = null },
@@ -89,13 +100,28 @@ fun PacksScreen(
             dismissButton = { TextButton(onClick = { confirm.value = null }) { Text("Cancel") } },
         )
     }
+    if (confirmTranslation.value) {
+        AlertDialog(
+            onDismissRequest = { confirmTranslation.value = false },
+            title = { Text("Download on mobile data?") },
+            text = {
+                Text(
+                    "The translation pack covers all 10 languages." +
+                        (translation.modelSizeBytes.takeIf { it > 0 }?.let { " Download size: %.0f MB.".format(it / 1e6) } ?: "") +
+                        " Wi-Fi is recommended.",
+                )
+            },
+            confirmButton = { TextButton(onClick = { confirmTranslation.value = false; onDownloadTranslation() }) { Text("Download") } },
+            dismissButton = { TextButton(onClick = { confirmTranslation.value = false }) { Text("Cancel") } },
+        )
+    }
 
     val builtInIds = remember(packs.builtIn) { packs.builtIn.map { it.id }.toSet() }
     val onPhone = remember(packs.builtIn, packs.installed) { (packs.builtIn + packs.installed).associateBy { it.id } }
     val catalogById = remember(packs.catalog) { packs.catalog.toMap() }
-    // Languages: everything in the catalogue plus anything installed that the catalogue doesn't know.
+    // Output languages remain selectable even before their voice or recognition packs are installed.
     val languages = remember(packs.catalog, onPhone) {
-        (packs.catalog.map { it.second.lang to it.second.packetCode } +
+        (Language.entries.map { it.iso to it.code } + packs.catalog.map { it.second.lang to it.second.packetCode } +
             onPhone.values.map { it.lang to it.packetCode }).distinct().sortedBy { it.second }.map { it.first }
     }
     val downloading = packs.downloads.any { it.value.error == null }
@@ -116,15 +142,15 @@ fun PacksScreen(
         Column(Modifier.weight(1f).padding(horizontal = 20.dp, vertical = 16.dp)) {
             Text("Languages", style = MaterialTheme.typography.headlineLarge)
             Text(
-                "Choose the language you speak. Speech and voice packs work offline after installation.",
+                "Choose the language you speak and the language you want to hear. Conversations work offline after installation.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp),
             )
             Text(
                 when {
                     loadingLanguage != null -> "Preparing ${englishName(loadingLanguage)}…"
-                    sessionActive -> "End the conversation to change your speaking language."
-                    else -> "Speaking ${englishName(selectedLanguage)}"
+                    sessionActive -> "End the conversation to change languages."
+                    else -> "Speak ${englishName(selectedLanguage)} · Hear ${englishName(listenLanguage)}"
                 },
                 style = MaterialTheme.typography.labelLarge, color = Palette.Accent,
                 modifier = Modifier.padding(top = 8.dp),
@@ -151,14 +177,28 @@ fun PacksScreen(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                item(key = "translation-pack") {
+                    TranslationPackCard(
+                        translation = translation,
+                        canInstall = !sessionActive && !packs.busy && !downloading,
+                        onDownload = {
+                            val metered = context.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered ?: true
+                            if (metered) confirmTranslation.value = true else onDownloadTranslation()
+                        },
+                        onImport = { translationPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
+                        onCancel = onCancelTranslationDownload,
+                    )
+                }
                 items(languages, key = { it }) { lang ->
                     val speak = packRow(lang, PackManifest.KIND_SPEAK, onPhone, builtInIds, catalogById, packs.downloads)
                     val listen = packRow(lang, PackManifest.KIND_LISTEN, onPhone, builtInIds, catalogById, packs.downloads)
                     LanguageCard(
                         lang, speak, listen, packs.busy, downloading,
-                        selected = lang == selectedLanguage,
+                        selectedSpeak = lang == selectedLanguage,
+                        selectedListen = lang == listenLanguage,
                         canSelect = !sessionActive && loadingLanguage == null && !packs.busy,
-                        onSelect = { onSelectLanguage(lang) },
+                        onSelectSpeak = { onSelectLanguage(lang) },
+                        onSelectListen = { onSelectListenLanguage(lang) },
                         onDelete = onDelete,
                         onDownload = requestDownload,
                         onCancel = onCancelDownload,
@@ -191,6 +231,56 @@ fun PacksScreen(
                         PackAction("Check for new packs (internet)", filled = false, enabled = !packs.busy && !downloading, onClick = onRefreshCatalog)
                     }
                 }
+            }
+        }
+    }
+}
+
+/** One shared translation pack, installed once for every supported language pair. */
+@Composable
+private fun TranslationPackCard(
+    translation: MainViewModel.TranslationUi,
+    canInstall: Boolean,
+    onDownload: () -> Unit,
+    onImport: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp).animateContentSize(Motion.gentle()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Offline translation", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                when {
+                    translation.busy -> translation.message ?: "Preparing translation…"
+                    !translation.deviceSupported -> "This phone cannot load the translation model"
+                    translation.ready -> "Ready · all 10 languages"
+                    else -> "Install one translation pack for all 10 languages."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (translation.ready) Palette.Accent else Palette.TextMuted,
+            )
+            if (translation.busy) {
+                DownloadBar(translation.progress?.coerceIn(0f, 1f) ?: 0f, translation.progress == null)
+                PackAction("Cancel", filled = false, enabled = true, onClick = onCancel)
+            } else if (!translation.ready) {
+                translation.modelSizeBytes.takeIf { it > 0 }?.let {
+                    Text("%.0f MB download".format(it / 1e6), style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PackAction(if (translation.error != null) "Retry download" else "Download", filled = true, enabled = canInstall && translation.deviceSupported, onClick = onDownload)
+                    PackAction("Import file…", filled = false, enabled = canInstall && translation.deviceSupported, onClick = onImport)
+                }
+                Text(
+                    "Download once with internet, or import a pack shared from another device. Translation runs on this phone without internet.",
+                    style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted,
+                )
+                Text("Uses about 1.4 GB storage. Requires a 64-bit phone with at least 4 GB RAM; 6 GB is recommended.",
+                    style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+            }
+            if (!translation.busy && translation.message != null && translation.message != translation.error) {
+                Text(translation.message, style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+            }
+            translation.error?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -268,9 +358,11 @@ private fun LanguageCard(
     listen: PackRow,
     busy: Boolean,
     anyDownloading: Boolean,
-    selected: Boolean,
+    selectedSpeak: Boolean,
+    selectedListen: Boolean,
     canSelect: Boolean,
-    onSelect: () -> Unit,
+    onSelectSpeak: () -> Unit,
+    onSelectListen: () -> Unit,
     onDelete: (String) -> Unit,
     onDownload: (String) -> Unit,
     onCancel: () -> Unit,
@@ -279,7 +371,7 @@ private fun LanguageCard(
     val any = listOf(speak, listen).firstNotNullOfOrNull {
         it.installed?.let { m -> m.native to m.name } ?: it.available?.let { e -> e.native to e.name }
     }
-    Card(modifier = modifier.fillMaxWidth().semantics { this.selected = selected }) {
+    Card(modifier = modifier.fillMaxWidth().semantics { this.selected = selectedSpeak || selectedListen }) {
         // A row gaining a progress bar or an error line eases the card taller instead of jumping.
         Column(Modifier.padding(12.dp).animateContentSize(Motion.gentle()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -288,11 +380,21 @@ private fun LanguageCard(
                         style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     Text(any?.second ?: englishName(lang), style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
                 }
-                if (selected) {
-                    Text("Selected", style = MaterialTheme.typography.labelLarge, color = Palette.Accent)
-                } else if (speak.installed != null) {
-                    PackAction("Use language", filled = true, enabled = canSelect, onClick = onSelect)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (selectedSpeak) {
+                    Text("Speaking", color = Palette.Accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
+                } else {
+                    PackAction("Speak this", filled = false, enabled = canSelect && speak.installed != null, onClick = onSelectSpeak)
                 }
+                if (selectedListen) {
+                    Text("Listening", color = Palette.Accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
+                } else {
+                    PackAction("Hear this", filled = false, enabled = canSelect, onClick = onSelectListen)
+                }
+            }
+            if (selectedListen && listen.installed == null) {
+                Text("Install its voice for spoken playback. Without a voice, you'll see text.", style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
             }
             for (row in listOf(speak, listen)) {
                 PackLine("$lang-${row.kind}", row, busy, anyDownloading, onDelete, onDownload, onCancel)

@@ -86,6 +86,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     onStart = { mode, peer, link, name -> viewModel.startSession(mode, peer, link, name) },
                     onLeave = viewModel::leaveSession,
                     onOpenTalk = { tab = Tab.Talk },
+                    onOpenLanguages = { tab = Tab.Languages },
                     onSelectLanguage = viewModel::selectLanguage,
                 )
                 Tab.Talk -> TalkScreen(
@@ -105,9 +106,15 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     onCancelDownload = viewModel::cancelDownload,
                     onRefreshCatalog = viewModel::refreshCatalog,
                     selectedLanguage = ui.myLanguage,
+                    listenLanguage = ui.listenLanguage,
+                    translation = ui.translation,
                     loadingLanguage = ui.loadingLanguage,
                     sessionActive = ui.mode != null,
                     onSelectLanguage = viewModel::selectLanguage,
+                    onSelectListenLanguage = viewModel::selectListenLanguage,
+                    onDownloadTranslation = viewModel::downloadTranslationModel,
+                    onImportTranslation = viewModel::importTranslationModel,
+                    onCancelTranslationDownload = viewModel::cancelTranslationDownload,
                 )
                 Tab.Metrics -> MetricsScreen(ui)
             }

@@ -96,3 +96,15 @@ idle/reconnect behavior and p50/p90/p95 first-audio latency on the intended phon
 Speech chunking can change prosody; compare real speech outputs across all voices
 before a release. Continuous recognition and actual translation are subsequent
 stages, not completed functionality.
+
+
+## Fully offline translation follow-up (2026-10-01)
+
+The user confirmed fully offline hold-to-talk. The translation path and shared model
+installer are implemented, with independent Speak/Hear selection and explicit original,
+translated, failure and missing-voice states. Final cloud validation passed 158 JVM tests
+(including native ten-script tokenizer parity and all 90 actual translation directions),
+28 Python tests, and all three ABI APK builds. The output-layer optimization reduces
+RAM and warm text translation time. Details, raw outputs, license restrictions and
+phone acceptance limits are in [OFFLINE_TRANSLATION_RESULTS.md](OFFLINE_TRANSLATION_RESULTS.md)
+and [OFFLINE_TRANSLATION_VALIDATION.md](OFFLINE_TRANSLATION_VALIDATION.md).
