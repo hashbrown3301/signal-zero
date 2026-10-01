@@ -78,9 +78,9 @@ fun MetricsScreen(ui: MainViewModel.UiState) {
             FadeInSection(0) {
                 Section("Latency", "p50", "p90")
                 PercentileRow("Round trip (RTT)", stats.rtt)
-                PercentileRow("Release → heard", stats.heard)
+                PercentileRow("Release → voice ready", stats.heard)
                 PercentileRow("Speech → text", stats.stt)
-                PercentileRow("Text → voice", stats.tts)
+                PercentileRow("Text → first voice", stats.tts)
                 Note("From this session's messages on this phone. Talk a few times to fill these in.")
             }
 

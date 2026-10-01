@@ -21,14 +21,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,19 +37,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import com.itantra.MainViewModel
-import com.itantra.R
 import com.itantra.packs.CatalogEntry
 import com.itantra.packs.PackManifest
 import com.itantra.ui.components.SecondaryButton
+import com.itantra.ui.components.BrandBar
 import com.itantra.ui.theme.Motion
 import com.itantra.ui.theme.Palette
 import com.itantra.ui.theme.pressScale
+import com.itantra.ui.theme.scriptFont
 
 /**
  * Every language iTantra supports, with a speak and a listen pack each: built in, installed (Delete),
@@ -64,13 +63,16 @@ import com.itantra.ui.theme.pressScale
 @Composable
 fun PacksScreen(
     packs: MainViewModel.PacksUi,
-    onBack: () -> Unit,
     onImport: (Uri) -> Unit,
     onRescan: () -> Unit,
     onDelete: (String) -> Unit,
     onDownload: (String) -> Unit,
     onCancelDownload: () -> Unit,
     onRefreshCatalog: () -> Unit,
+    selectedLanguage: String,
+    loadingLanguage: String?,
+    sessionActive: Boolean,
+    onSelectLanguage: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -109,81 +111,85 @@ fun PacksScreen(
     // The last message stays drawn while it fades out.
     val lastMessage = rememberLastNonNull(packs.message?.let { it to packs.messageIsError })
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
-                Icon(painterResource(R.drawable.ic_chevron_down), null, Modifier.size(16.dp).rotate(90f))
-                Text("Back", modifier = Modifier.padding(start = 4.dp))
-            }
-            Text("Language packs", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        }
-        Text(
-            "Speak = understand your speech in that language. Listen = hear that language spoken. " +
-                "Downloaded once, then they work offline.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        // Busy bar and message ease in and out (padding lives inside, so nothing is reserved while they're hidden).
-        Column {
-            AnimatedVisibility(packs.busy, enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()), exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle())) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-            }
-            AnimatedVisibility(packs.message != null, enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()), exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle())) {
-                lastMessage?.let { (text, isError) ->
-                    Text(
-                        text,
-                        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
+    Column(Modifier.fillMaxSize()) {
+        BrandBar()
+        Column(Modifier.weight(1f).padding(horizontal = 20.dp, vertical = 16.dp)) {
+            Text("Languages", style = MaterialTheme.typography.headlineLarge)
+            Text(
+                "Choose the language you speak. Speech and voice packs work offline after installation.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            Text(
+                when {
+                    loadingLanguage != null -> "Preparing ${englishName(loadingLanguage)}…"
+                    sessionActive -> "End the conversation to change your speaking language."
+                    else -> "Speaking ${englishName(selectedLanguage)}"
+                },
+                style = MaterialTheme.typography.labelLarge, color = Palette.Accent,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            // Busy bar and message ease in and out (padding lives inside, so nothing is reserved while they're hidden).
+            Column {
+                AnimatedVisibility(packs.busy, enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()), exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle())) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                }
+                AnimatedVisibility(packs.message != null, enter = fadeIn(Motion.enter()) + expandVertically(Motion.gentle()), exit = fadeOut(Motion.exit()) + shrinkVertically(Motion.gentle())) {
+                    lastMessage?.let { (text, isError) ->
+                        Text(
+                            text,
+                            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
                 }
             }
-        }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(languages, key = { it }) { lang ->
-                val speak = packRow(lang, PackManifest.KIND_SPEAK, onPhone, builtInIds, catalogById, packs.downloads)
-                val listen = packRow(lang, PackManifest.KIND_LISTEN, onPhone, builtInIds, catalogById, packs.downloads)
-                LanguageCard(
-                    lang, speak, listen, packs.busy, downloading,
-                    onDelete = onDelete,
-                    onDownload = requestDownload,
-                    onCancel = onCancelDownload,
-                    modifier = Modifier.animateItem(fadeInSpec = Motion.enter(), placementSpec = Motion.gentle(), fadeOutSpec = Motion.exit()),
-                )
-            }
-            item(key = "without-internet") {
-                Column(
-                    Modifier
-                        .padding(vertical = 8.dp)
-                        .animateItem(fadeInSpec = Motion.enter(), placementSpec = Motion.gentle(), fadeOutSpec = Motion.exit()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text("Without internet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        SecondaryButton(
-                            onClick = { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
-                            enabled = !packs.busy,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("Import pack…") }
-                        SecondaryButton(onClick = onRescan, enabled = !packs.busy, modifier = Modifier.weight(1f)) {
-                            Text("Check sideloaded")
-                        }
-                    }
-                    Text(
-                        "From a PC: adb push <pack>.zip ${packs.incomingPath.ifEmpty { "/sdcard/Android/data/com.itantra/files/incoming" }}/",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(languages, key = { it }) { lang ->
+                    val speak = packRow(lang, PackManifest.KIND_SPEAK, onPhone, builtInIds, catalogById, packs.downloads)
+                    val listen = packRow(lang, PackManifest.KIND_LISTEN, onPhone, builtInIds, catalogById, packs.downloads)
+                    LanguageCard(
+                        lang, speak, listen, packs.busy, downloading,
+                        selected = lang == selectedLanguage,
+                        canSelect = !sessionActive && loadingLanguage == null && !packs.busy,
+                        onSelect = { onSelectLanguage(lang) },
+                        onDelete = onDelete,
+                        onDownload = requestDownload,
+                        onCancel = onCancelDownload,
+                        modifier = Modifier.animateItem(fadeInSpec = Motion.enter(), placementSpec = Motion.gentle(), fadeOutSpec = Motion.exit()),
                     )
-                    PackAction("Check for new packs (internet)", filled = false, enabled = !packs.busy && !downloading, onClick = onRefreshCatalog)
+                }
+                item(key = "without-internet") {
+                    Column(
+                        Modifier
+                            .padding(vertical = 8.dp)
+                            .animateItem(fadeInSpec = Motion.enter(), placementSpec = Motion.gentle(), fadeOutSpec = Motion.exit()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Install from a file", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            SecondaryButton(
+                                onClick = { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
+                                enabled = !packs.busy,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Import pack…") }
+                            SecondaryButton(onClick = onRescan, enabled = !packs.busy, modifier = Modifier.weight(1f)) {
+                                Text("Check transferred packs")
+                            }
+                        }
+                        Text(
+                            "Use Import pack to choose a language pack shared from another device.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        PackAction("Check for new packs (internet)", filled = false, enabled = !packs.busy && !downloading, onClick = onRefreshCatalog)
+                    }
                 }
             }
         }
@@ -262,6 +268,9 @@ private fun LanguageCard(
     listen: PackRow,
     busy: Boolean,
     anyDownloading: Boolean,
+    selected: Boolean,
+    canSelect: Boolean,
+    onSelect: () -> Unit,
     onDelete: (String) -> Unit,
     onDownload: (String) -> Unit,
     onCancel: () -> Unit,
@@ -270,10 +279,21 @@ private fun LanguageCard(
     val any = listOf(speak, listen).firstNotNullOfOrNull {
         it.installed?.let { m -> m.native to m.name } ?: it.available?.let { e -> e.native to e.name }
     }
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(modifier = modifier.fillMaxWidth().semantics { this.selected = selected }) {
         // A row gaining a progress bar or an error line eases the card taller instead of jumping.
         Column(Modifier.padding(12.dp).animateContentSize(Motion.gentle()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(any?.let { "${it.first} · ${it.second}" } ?: lang, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f)) {
+                    Text(any?.first ?: nativeName(lang), fontFamily = scriptFont(lang),
+                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(any?.second ?: englishName(lang), style = MaterialTheme.typography.bodySmall, color = Palette.TextMuted)
+                }
+                if (selected) {
+                    Text("Selected", style = MaterialTheme.typography.labelLarge, color = Palette.Accent)
+                } else if (speak.installed != null) {
+                    PackAction("Use language", filled = true, enabled = canSelect, onClick = onSelect)
+                }
+            }
             for (row in listOf(speak, listen)) {
                 PackLine("$lang-${row.kind}", row, busy, anyDownloading, onDelete, onDownload, onCancel)
             }
@@ -298,7 +318,7 @@ private fun PackLine(
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text(if (row.kind == PackManifest.KIND_SPEAK) "Speak" else "Listen", fontWeight = FontWeight.Medium)
+                Text(if (row.kind == PackManifest.KIND_SPEAK) "Speech recognition" else "Spoken voice", fontWeight = FontWeight.Medium)
                 HeldFadeSwap(line.phase, line, label = "pack-status") { _, l ->
                     Text(l.status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

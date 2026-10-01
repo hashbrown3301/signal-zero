@@ -103,6 +103,10 @@ class BluetoothTransport private constructor(
             val reason = try {
                 val s = adapter.getRemoteDevice(address).createRfcommSocketToServiceRecord(APP_UUID)
                 socket = s // lets close() abort a pending connect
+                if (closed) {
+                    s.close()
+                    return
+                }
                 s.connect()
                 failures = 0
                 serve(s)
@@ -120,11 +124,13 @@ class BluetoothTransport private constructor(
 
     /** Reads packets from [s] until the connection ends; returns why it ended. */
     private suspend fun serve(s: BluetoothSocket): String {
-        val stream = FramedStream(s.inputStream, s.outputStream)
         socket = s
-        framed = stream
-        setState(LinkState.Connected(s.remoteDevice?.name ?: s.remoteDevice?.address ?: "peer"))
         return try {
+            // A client may be accepted just as close() clears the session.
+            if (closed) return "Closed"
+            val stream = FramedStream(s.inputStream, s.outputStream)
+            framed = stream
+            setState(LinkState.Connected(s.remoteDevice?.name ?: s.remoteDevice?.address ?: "peer"))
             while (true) inbox.send(stream.read())
             @Suppress("UNREACHABLE_CODE")
             error("unreachable")

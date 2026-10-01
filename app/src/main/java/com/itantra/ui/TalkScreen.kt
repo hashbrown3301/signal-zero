@@ -403,8 +403,8 @@ private fun LineStatus(text: String, failed: Boolean) {
 private fun statusWord(m: Message): String = when (m.status) {
     Status.QUEUED -> "queued"
     Status.SENT -> "sent"
-    Status.ACKED -> "heard"
-    Status.FAILED -> "not sent"
+    Status.ACKED -> "delivered"
+    Status.FAILED -> if (m.direction == Direction.OUTGOING) "not confirmed" else "could not play"
     Status.PLAYING -> "speaking"
     Status.PLAYED -> if (m.direction == Direction.LOCAL) "played back" else "played"
     Status.NO_VOICE -> "text only"
@@ -468,6 +468,10 @@ private fun detailLines(m: Message): List<String> {
             val total = (m.vadMs ?: 0) + (m.sttMs ?: 0) + m.ttsMs
             lines += "VAD ${m.vadMs} · STT ${m.sttMs} · TTS ${m.ttsMs} · total $total ms"
         }
+    }
+    if (m.voiceChunks > 1) {
+        lines += "First voice chunk ${m.ttsMs ?: "–"} ms · ${m.voiceChunks} chunks"
+        m.totalTtsMs?.let { lines += "All voice synthesis $it ms" }
     }
     return lines
 }

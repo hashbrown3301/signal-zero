@@ -29,6 +29,7 @@ import com.itantra.comm.TcpTransport
 import com.itantra.comm.localIpv4Addresses
 import com.itantra.session.DeviceListener
 import com.itantra.session.DeviceSpeaker
+import com.itantra.session.ChunkedSpeaker
 import com.itantra.session.Direction
 import com.itantra.session.SessionManager
 import com.itantra.session.SessionState
@@ -300,7 +301,7 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
             val sm = SessionManager(
                 this,
                 listener,
-                DeviceSpeaker(voiceLock, debugFile("tts_dump")) { code -> voices.get(code) },
+                ChunkedSpeaker(DeviceSpeaker(voiceLock, debugFile("tts_dump")) { code -> voices.get(code) }),
                 transport,
                 language = language,
                 clock = SystemClock::elapsedRealtime,

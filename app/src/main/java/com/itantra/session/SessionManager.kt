@@ -43,6 +43,9 @@ data class Message(
     val sttMs: Long? = null,
     /** This phone's TTS time (INCOMING / LOCAL). */
     val ttsMs: Long? = null,
+    /** All chunks' synthesis time, final after local playback completes. */
+    val totalTtsMs: Long? = null,
+    val voiceChunks: Int = 1,
     /** How long an INCOMING message waited before synthesis (talk button held, earlier playback). */
     val queueMs: Long? = null,
     /** OUTGOING: button release → ACK received, on this phone's clock. */
@@ -110,9 +113,18 @@ class SessionManager(
     private val minPressMs: Long = 300,
     /** PING period while connected; 0 disables pinging. */
     private val pingIntervalMs: Long = 2_000,
+    /** Once RTT is known, an idle link needs fewer keepalives than an active conversation. */
+    private val idlePingIntervalMs: Long = 10_000,
+    private val activeWindowMs: Long = 10_000,
     /** How long unacknowledged messages wait for the link to come back before they fail. */
     private val resendWindowMs: Long = 30_000,
+    /** A healthy socket is not proof that the peer processed a message. */
+    private val ackTimeoutMs: Long = 60_000,
 ) {
+    init {
+        require(pingIntervalMs >= 0 && idlePingIntervalMs > 0 && activeWindowMs >= 0)
+        require(resendWindowMs > 0 && ackTimeoutMs > 0)
+    }
     private val job = SupervisorJob(parentScope.coroutineContext[Job])
     private val scope = CoroutineScope(parentScope.coroutineContext + job)
 
@@ -150,7 +162,9 @@ class SessionManager(
     private var nextSeq = 0
     private var pressedAt = 0L
 
-    private val pingSentAt = ConcurrentHashMap<Int, Long>()
+    private data class Ping(val sentAt: Long, val timestamp: Long)
+    private val pingSentAt = ConcurrentHashMap<Int, Ping>()
+    @Volatile private var lastActivityAt = clock()
     private var nextPingSeq = 0
     /** Language code the peer's PINGs announced and whose voice was preloaded; -1 = none yet on this connection. */
     @Volatile private var preloadedLang = -1
@@ -181,6 +195,21 @@ class SessionManager(
             }
             scope.launch { transport.incoming.collect(::onPacket) }
             if (pingIntervalMs > 0) scope.launch { pingLoop(transport) }
+            scope.launch {
+                while (true) {
+                    delay(minOf(1_000, ackTimeoutMs))
+                    if (transport.state.value is LinkState.Connected) {
+                        val now = clock()
+                        for ((seq, sent) in pending) {
+                            if (now - sent.releasedAt >= ackTimeoutMs && pending.remove(seq, sent)) {
+                                updateMessage(sent.messageId) {
+                                    it.copy(status = Status.FAILED, error = "Delivery was not confirmed. Please try again.")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -189,16 +218,26 @@ class SessionManager(
             transport.state.first { it is LinkState.Connected }
             val seq = nextPingSeq++ and 0xFFFF
             val now = clock()
-            pingSentAt[seq] = now
-            pingSentAt.entries.removeIf { now - it.value > PING_TIMEOUT_MS } // lost PONGs
-            runCatching { transport.send(Packet.ping(seq, now, language)) }
-            delay(pingIntervalMs)
+            val packet = Packet.ping(seq, now, language)
+            pingSentAt[seq] = Ping(now, packet.timestamp)
+            pingSentAt.entries.removeIf { now - it.value.sentAt > PING_TIMEOUT_MS } // lost PONGs
+            try {
+                transport.send(packet)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                pingSentAt.remove(seq)
+            }
+            val idle = _state.value.rttMs != null && clock() - lastActivityAt >= activeWindowMs
+            delay(if (idle) maxOf(pingIntervalMs, idlePingIntervalMs) else pingIntervalMs)
         }
     }
 
     private fun onPong(p: Packet) {
-        val sentAt = pingSentAt.remove(p.seq) ?: return
-        val rtt = clock() - sentAt
+        val ping = pingSentAt[p.seq] ?: return
+        if (p.timestamp != ping.timestamp || !pingSentAt.remove(p.seq, ping)) return
+        val rtt = clock() - ping.sentAt
+        if (rtt < 0 || rtt > PING_TIMEOUT_MS) return
         val median = synchronized(rttSamples) {
             rttSamples.addLast(rtt)
             while (rttSamples.size > RTT_WINDOW) rttSamples.removeFirst()
@@ -239,6 +278,7 @@ class SessionManager(
     fun pressStart(): Boolean {
         val s = _state.value
         if (s.phase != Phase.Ready || s.speaking) return false
+        lastActivityAt = clock()
         try {
             listener.start()
         } catch (e: Exception) {
@@ -314,6 +354,7 @@ class SessionManager(
     private suspend fun onPacket(p: Packet) {
         when (p.type) {
             PacketType.TEXT -> {
+                lastActivityAt = clock()
                 // A resend after a reconnect may repeat a message we already have: don't play it twice.
                 val key = TextKey(p.seq, p.timestamp)
                 val duplicate: Boolean
@@ -353,7 +394,10 @@ class SessionManager(
                     }
                 }
             }
-            PacketType.ACK -> pending.remove(p.seq)?.let { sent ->
+            PacketType.ACK -> pending[p.seq]?.takeIf {
+                it.packet.timestamp == p.timestamp && it.packet.langCode == p.langCode
+            }?.let { sent ->
+                if (!pending.remove(p.seq, sent)) return
                 val after = clock() - sent.releasedAt
                 val rtt = _state.value.rttMs
                 updateMessage(sent.messageId) {
@@ -394,10 +438,11 @@ class SessionManager(
                     continue
                 }
                 updateMessage(item.messageId) {
-                    it.copy(status = Status.PLAYING, ttsMs = prepared.synthMs, queueMs = queueMs)
+                    it.copy(status = Status.PLAYING, ttsMs = prepared.synthMs, queueMs = queueMs,
+                        voiceChunks = prepared.chunkCount)
                 }
                 prepared.play()
-                updateMessage(item.messageId) { it.copy(status = Status.PLAYED) }
+                updateMessage(item.messageId) { it.copy(status = Status.PLAYED, totalTtsMs = prepared.totalSynthMs) }
             } catch (e: CancellationException) {
                 throw e  // the session is closing (e.g. Leave while speaking): not a playback failure
             } catch (e: Exception) {

@@ -9,6 +9,12 @@ See [BENCHMARKS.md](BENCHMARKS.md).
 
 **Phase 1 (in progress):** two phones exchanging text over Wi-Fi. See [docs/PHASE1_PLAN.md](docs/PHASE1_PLAN.md).
 
+**Upgradation:** lower first-audio delay through chunked voice synthesis, quieter idle
+links, stronger delivery checks, and direct language selection. The ten-language
+translation roadmap is in [docs/UPGRADATION_PLAN.md](docs/UPGRADATION_PLAN.md);
+translation itself is not integrated yet. Tests and the cloud voice benchmark are
+documented in [docs/UPGRADATION_VALIDATION.md](docs/UPGRADATION_VALIDATION.md).
+
 ## Models
 
 | Stage | Model | Source | License |

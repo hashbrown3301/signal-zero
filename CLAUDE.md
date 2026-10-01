@@ -52,7 +52,7 @@ Offline Hindi voice assistant for Smart India Hackathon problem **SIH26173 (ISRO
 
 ## Rules
 
-- No translation feature.
+- User authorized real translation on 2026-09-30. Follow `docs/UPGRADATION_PLAN.md`; the translation engine is not integrated yet, and offline/online plus hold-to-talk/continuous behavior await clarification.
 - Don't copy code from other SIH26173 GitHub repos (no licenses).
 - STT model: `OpenVoiceOS/ai4bharat-indicconformer-hi-onnx`. Do **not** use `trysem/indicconformer-120m-onnx` (mislabeled).
 - Work step by step: explain what and why, and wait for the user's OK before each step.

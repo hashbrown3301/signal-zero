@@ -42,8 +42,13 @@ class AudioRecorder(val sampleRate: Int = 16_000) {
         }
 
         synchronized(chunks) { chunks.clear() }
+        try {
+            rec.startRecording()
+        } catch (e: Exception) {
+            rec.release()
+            throw e
+        }
         running = true
-        rec.startRecording()
         record = rec
         reader = thread(name = "AudioRecorder") {
             // 20 ms reads: stop() waits for at most one read, so small chunks = faster release.
@@ -59,11 +64,16 @@ class AudioRecorder(val sampleRate: Int = 16_000) {
     fun stop(): FloatArray {
         val rec = record ?: return FloatArray(0)
         running = false
-        reader?.join()
-        rec.stop()
-        rec.release()
-        record = null
-        reader = null
+        // stop() unblocks a pending AudioRecord.read; joining first can stall forever on
+        // devices that do not return the requested buffer after recording is cancelled.
+        try {
+            rec.stop()
+            reader?.join()
+        } finally {
+            rec.release()
+            record = null
+            reader = null
+        }
 
         synchronized(chunks) {
             val out = FloatArray(chunks.sumOf { it.size })

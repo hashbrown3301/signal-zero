@@ -42,7 +42,7 @@ class BenchmarkLog(dir: File, private val mode: String, private val link: String
                         m.wireBytes, m.recordedSec?.let { "%.2f".format(Locale.US, it) },
                         m.speechSec?.let { "%.2f".format(Locale.US, it) },
                         m.vadMs, m.sttMs, m.ttsMs, m.queueMs, m.ackAfterMs, m.peerTtsMs, m.peerQueueMs,
-                        m.rttMs, m.endToEndMs, m.otherMs, quote(m.text),
+                        m.rttMs, m.endToEndMs, m.otherMs, quote(m.text), m.totalTtsMs, m.voiceChunks,
                     ).joinToString(",") { it?.toString() ?: "" }
                 )
             }
@@ -72,7 +72,7 @@ class BenchmarkLog(dir: File, private val mode: String, private val link: String
         val HEADER = listOf(
             "session", "time", "device", "mode", "link", "setup_ms", "direction", "seq", "status", "wire_bytes",
             "recorded_s", "speech_s", "vad_ms", "stt_ms", "tts_ms", "queue_ms", "ack_after_ms",
-            "peer_tts_ms", "peer_queue_ms", "rtt_ms", "e2e_ms", "other_ms", "text",
+            "peer_tts_ms", "peer_queue_ms", "rtt_ms", "e2e_ms", "other_ms", "text", "tts_total_ms", "voice_chunks",
         )
         val LINK_HEADER = listOf("session", "time", "device", "mode", "link", "event", "duration_ms", "detail")
     }

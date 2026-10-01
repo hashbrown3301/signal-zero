@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,7 +39,7 @@ import com.itantra.ui.theme.Palette
  */
 @Composable
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
-    val ui by viewModel.state.collectAsState()
+    val ui by viewModel.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
 
     // Solo has nothing to set up: go straight to Talk. A link: go to Talk once, when it first connects.
@@ -98,13 +98,16 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 )
                 Tab.Languages -> PacksScreen(
                     packs = ui.packs,
-                    onBack = { tab = Tab.Home },
                     onImport = viewModel::importPack,
                     onRescan = viewModel::openPacks,
                     onDelete = viewModel::deletePack,
                     onDownload = viewModel::downloadPack,
                     onCancelDownload = viewModel::cancelDownload,
                     onRefreshCatalog = viewModel::refreshCatalog,
+                    selectedLanguage = ui.myLanguage,
+                    loadingLanguage = ui.loadingLanguage,
+                    sessionActive = ui.mode != null,
+                    onSelectLanguage = viewModel::selectLanguage,
                 )
                 Tab.Metrics -> MetricsScreen(ui)
             }
@@ -112,4 +115,3 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         BottomNav(current = tab, onSelect = { tab = it })
     }
 }
-
