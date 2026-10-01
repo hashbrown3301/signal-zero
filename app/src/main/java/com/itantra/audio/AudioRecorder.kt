@@ -8,7 +8,13 @@ import androidx.annotation.RequiresPermission
 
 /** Hold-to-talk capture: 16 kHz mono PCM, limited to 30 seconds per utterance. */
 class AudioRecorder(val sampleRate: Int = 16_000) {
-    private val capture = PcmCapture(sampleRate) { createSource() }
+    private val capture = PcmCapture(sampleRate) {
+        try {
+            createSource()
+        } catch (error: SecurityException) {
+            throw CaptureException("Microphone permission is required. Allow microphone access in Android settings and try again.", error)
+        }
+    }
 
     val isRecording: Boolean get() = capture.isRecording
 

@@ -423,7 +423,14 @@ class MainViewModel(app: Application, handle: SavedStateHandle) : AndroidViewMod
                     catch (e: Exception) { Log.w(TAG, "Link diagnostics unavailable", e) }
                 }
                 if (mode == Mode.HOST && bt) {
-                    val name = runCatching { Bluetooth.adapter(getApplication())?.name }.getOrNull().orEmpty()
+                    val name = try {
+                        Bluetooth.adapter(getApplication())?.name.orEmpty()
+                    } catch (_: SecurityException) {
+                        // Nearby-device access can be revoked after connecting; the label is optional.
+                        ""
+                    } catch (_: Exception) {
+                        ""
+                    }
                     _state.update { it.copy(ownBtName = name) }
                 }
                 if (mode == Mode.HOST && !bt) {
